@@ -280,7 +280,7 @@
         </nav>
     </div>
 
-    <!-- Modals -->
+    <!-- Modals (詳細, 編輯, 行程設定) -->
     <div id="detail-modal" class="fixed inset-0 bg-[#433D3C]/60 z-50 hidden flex items-end sm:items-center justify-center p-4 backdrop-blur-sm transition-opacity">
         <div class="bg-[#FEFDF5] w-full max-w-md rounded-[32px] p-6 shadow-2xl modal-enter relative max-h-[85vh] overflow-y-auto no-scrollbar">
             <div class="w-12 h-1.5 bg-stone-200 rounded-full mx-auto mb-6"></div>
@@ -330,22 +330,20 @@
         import { getAuth, signInAnonymously, signInWithCustomToken } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js';
         import { getFirestore, doc, setDoc, onSnapshot, collection } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js';
 
-        // 🔴 請在下方填入您的 Firebase 設定 (取代原本的 placeholder)
+        // 🔴 您已填入的設定
         const firebaseConfig = {
-            // 在這裡貼上您的 Firebase Config
-            // 例如:
-            // apiKey: "AIzaSy...",
-            // authDomain: "...",
-            // ...
+          apiKey: "AIzaSyDP1jX1u8TCI3TY8U3xfhEZbaMv9JLgJNw",
+          authDomain: "mytaiwantrip-603c6.firebaseapp.com",
+          projectId: "mytaiwantrip-603c6",
+          storageBucket: "mytaiwantrip-603c6.firebasestorage.app",
+          messagingSenderId: "1063667328708",
+          appId: "1:1063667328708:web:d2ae7acd304e589b790b91"
         };
 
-        // ⚠️ 如果您還沒填入設定，下方這行會報錯。
-        // 請務必完成 Firebase 設定後再部署！
         let app, auth, db;
         
-        // 簡單檢查是否有填入設定
         if (Object.keys(firebaseConfig).length === 0) {
-            console.warn("Firebase config is missing! App will run in offline mode (changes won't sync).");
+            console.warn("Firebase config is missing!");
             document.getElementById('status-text').innerText = "No Cloud";
             document.getElementById('status-dot').classList.replace('bg-green-400', 'bg-gray-400');
             document.getElementById('sync-indicator').style.display = 'none';
@@ -355,33 +353,29 @@
             db = getFirestore(app);
         }
 
-        // 用固定 ID 確保公開資料一致
         const appId = 'my-taiwan-trip';
 
-        // Cloud Sync Functions
         window.saveToFirestore = async (type, data) => {
             if (!auth || !auth.currentUser) return;
             try {
                 const indicator = document.getElementById('sync-indicator');
                 indicator.classList.add('show');
-                const docRef = doc(db, 'trips', appId, 'data', type); // 簡化路徑
+                const docRef = doc(db, 'trips', appId, 'data', type);
                 await setDoc(docRef, { items: data });
                 setTimeout(() => indicator.classList.remove('show'), 800);
             } catch (e) { console.error("Sync error:", e); }
         };
 
         async function initFirebase() {
-            if (!auth) return; // No config, skip
+            if (!auth) return;
             
             try {
-                // GitHub Pages 只能用匿名登入
                 await signInAnonymously(auth);
                 
                 const scheduleRef = doc(db, 'trips', appId, 'data', 'schedule');
                 const expenseRef = doc(db, 'trips', appId, 'data', 'expenses');
                 const companionRef = doc(db, 'trips', appId, 'data', 'companions');
 
-                // Status Update
                 document.getElementById('status-text').innerText = "Synced";
                 document.getElementById('status-dot').classList.replace('bg-gray-300', 'bg-green-400');
 
@@ -457,7 +451,6 @@
         function saveSchedule() { window.saveToFirestore('schedule', window.scheduleData); }
         
         // --- Core Logic ---
-        // (這部分的邏輯與之前相同，負責渲染畫面與計算)
         window.renderDaySelector = function() { 
             const c = document.getElementById('day-selector'); 
             c.innerHTML = window.scheduleData.map((d, i) => `<button onclick="selectDay(${i})" class="day-btn flex-shrink-0 flex flex-col items-center justify-center w-[60px] h-[72px] rounded-2xl transition-all border border-transparent tap-effect ${i===window.currentDayIndex?'bg-[#433D3C] text-[#FEFDF5] shadow-lg shadow-stone-200':'bg-white text-stone-300'}"><span class="text-[10px] font-bold tracking-wide opacity-80">${d.day}</span><span class="text-xl font-bold font-mono mt-1">${d.month}/${d.date}</span></button>`).join(''); 
