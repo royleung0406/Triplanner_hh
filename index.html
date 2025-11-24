@@ -83,9 +83,24 @@
         
         /* 天氣橫向捲動區塊 */
         .weather-scroll-item { min-width: 60px; }
+        
+        /* 載入中遮罩 */
+        #loading-mask {
+            position: fixed; inset: 0; background: #FEFDF5; z-index: 9999;
+            display: flex; justify-content: center; align-items: center;
+            transition: opacity 0.5s;
+        }
     </style>
 </head>
 <body class="h-screen flex flex-col overflow-hidden bg-[#FEFDF5]">
+
+    <!-- 載入中畫面 -->
+    <div id="loading-mask">
+        <div class="text-center">
+            <i data-lucide="plane" class="w-10 h-10 text-[#433D3C] animate-bounce mb-2 mx-auto"></i>
+            <p class="text-sm text-stone-400 font-bold tracking-widest">SYNCING...</p>
+        </div>
+    </div>
 
     <!-- 頂部資訊 -->
     <header class="bg-[#FEFDF5]/90 backdrop-blur-sm pt-safe-top sticky top-0 z-20 px-6 py-4 flex justify-between items-end">
@@ -103,7 +118,10 @@
                 <i data-lucide="cloud" class="w-4 h-4 text-stone-400"></i>
                 <span class="text-sm font-bold">22°C</span>
             </div>
-            <button onclick="resetToDefault()" class="text-[10px] text-stone-400 underline mt-1 hover:text-stone-600 transition-colors">恢復預設</button>
+            <div class="flex items-center gap-1 mt-1">
+                <div class="w-1.5 h-1.5 rounded-full bg-green-400"></div>
+                <span class="text-[10px] text-stone-400">Live Sync</span>
+            </div>
         </div>
     </header>
 
@@ -285,71 +303,118 @@
                 <div class="space-y-1"><label class="text-xs text-stone-500 font-bold ml-1">地點</label><div class="relative"><i data-lucide="map-pin" class="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400"></i><input type="text" id="edit-location" class="w-full bg-white rounded-2xl p-4 pl-10 text-sm font-medium border border-transparent focus:border-stone-200 focus:outline-none shadow-sm" placeholder="輸入地點關鍵字"></div></div>
                 <div class="space-y-1"><label class="text-xs text-stone-500 font-bold ml-1">標籤 (逗號分隔)</label><input type="text" id="edit-tags" class="w-full bg-white rounded-2xl p-4 text-sm font-medium border border-transparent focus:border-stone-200 focus:outline-none shadow-sm" placeholder="例如: 必吃, 推薦"></div>
                 <div class="space-y-1"><label class="text-xs text-stone-500 font-bold ml-1">簡短備註</label><input type="text" id="edit-note" class="w-full bg-white rounded-2xl p-4 text-sm font-medium border border-transparent focus:border-stone-200 focus:outline-none shadow-sm" placeholder="顯示在卡片上的短句"></div>
-                <div class="space-y-1"><label class="text-xs text-stone-500 font-bold ml-1">詳細介紹</label><textarea id="edit-description" rows="4" class="w-full bg-white rounded-2xl p-4 text-sm font-medium border border-transparent focus:border-stone-200 focus:outline-none shadow-sm resize-none" placeholder="詳細攻略..."></textarea></div>
+                <div class="space-y-1"><label class="text-xs text-stone-500 font-bold ml-1">詳細介紹 (同步顯示)</label><textarea id="edit-description" rows="4" class="w-full bg-white rounded-2xl p-4 text-sm font-medium border border-transparent focus:border-stone-200 focus:outline-none shadow-sm resize-none" placeholder="這裡輸入的內容會同步到詳細頁面..."></textarea></div>
                 <div class="pt-4"><button type="submit" class="w-full py-4 rounded-2xl bg-[#433D3C] text-[#FEFDF5] font-bold shadow-lg shadow-stone-300 tap-effect">儲存變更</button></div>
             </form>
         </div>
     </div>
 
-    <!-- 行程設定 Modal (升級版: 包含天數) -->
     <div id="date-modal" class="fixed inset-0 bg-[#433D3C]/60 z-50 hidden flex items-center justify-center p-4 backdrop-blur-sm transition-opacity">
         <div class="bg-[#FEFDF5] w-full max-w-sm rounded-[32px] p-6 shadow-2xl modal-enter relative">
             <h3 class="text-lg font-bold mb-6 text-[#433D3C] text-center">行程設定</h3>
-            
             <div class="space-y-4">
-                <div>
-                    <label class="text-xs text-stone-500 font-bold ml-1 block mb-2">出發日期</label>
-                    <input type="date" id="start-date-input" class="w-full bg-white rounded-2xl p-4 text-lg font-medium border border-transparent focus:border-stone-200 focus:outline-none shadow-sm text-center text-[#433D3C]">
-                </div>
-                
-                <div>
-                    <label class="text-xs text-stone-500 font-bold ml-1 block mb-2">旅行總天數</label>
-                    <div class="flex items-center gap-3 bg-white rounded-2xl p-2 shadow-sm">
-                        <button onclick="changeDays(-1)" class="w-10 h-10 rounded-xl bg-stone-100 text-stone-600 flex items-center justify-center font-bold text-xl tap-effect">-</button>
-                        <input type="number" id="trip-days-input" readonly class="flex-1 text-center text-xl font-bold bg-transparent border-none focus:ring-0 text-[#433D3C]" value="5">
-                        <button onclick="changeDays(1)" class="w-10 h-10 rounded-xl bg-stone-100 text-stone-600 flex items-center justify-center font-bold text-xl tap-effect">+</button>
-                    </div>
-                </div>
+                <div><label class="text-xs text-stone-500 font-bold ml-1 block mb-2">出發日期</label><input type="date" id="start-date-input" class="w-full bg-white rounded-2xl p-4 text-lg font-medium border border-transparent focus:border-stone-200 focus:outline-none shadow-sm text-center text-[#433D3C]"></div>
+                <div><label class="text-xs text-stone-500 font-bold ml-1 block mb-2">旅行總天數</label><div class="flex items-center gap-3 bg-white rounded-2xl p-2 shadow-sm"><button onclick="changeDays(-1)" class="w-10 h-10 rounded-xl bg-stone-100 text-stone-600 flex items-center justify-center font-bold text-xl tap-effect">-</button><input type="number" id="trip-days-input" readonly class="flex-1 text-center text-xl font-bold bg-transparent border-none focus:ring-0 text-[#433D3C]" value="5"><button onclick="changeDays(1)" class="w-10 h-10 rounded-xl bg-stone-100 text-stone-600 flex items-center justify-center font-bold text-xl tap-effect">+</button></div></div>
             </div>
-
             <p class="text-[10px] text-red-400 text-center mt-6 mb-2">* 減少天數將會刪除多餘日期的行程</p>
-
-            <div class="flex gap-3">
-                <button onclick="closeDateModal()" class="flex-1 py-3 rounded-2xl bg-stone-100 text-stone-500 font-bold tap-effect">取消</button>
-                <button onclick="updateTravelDates()" class="flex-1 py-3 rounded-2xl bg-[#433D3C] text-white font-bold tap-effect shadow-lg shadow-stone-300">確認更新</button>
-            </div>
+            <div class="flex gap-3"><button onclick="closeDateModal()" class="flex-1 py-3 rounded-2xl bg-stone-100 text-stone-500 font-bold tap-effect">取消</button><button onclick="updateTravelDates()" class="flex-1 py-3 rounded-2xl bg-[#433D3C] text-white font-bold tap-effect shadow-lg shadow-stone-300">確認更新</button></div>
         </div>
     </div>
+
+    <!-- Firebase Integration -->
+    <script type="module">
+        import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js';
+        import { getAuth, signInAnonymously, signInWithCustomToken } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js';
+        import { getFirestore, doc, setDoc, onSnapshot, collection } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js';
+
+        const firebaseConfig = JSON.parse(__firebase_config);
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+
+        // Cloud Sync Functions
+        window.saveToFirestore = async (type, data) => {
+            if (!auth.currentUser) return;
+            try {
+                // Rule 1 compliance: Use specific path
+                const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'trip_data', type);
+                await setDoc(docRef, { items: data });
+            } catch (e) { console.error("Sync error:", e); }
+        };
+
+        async function initFirebase() {
+            try {
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+                
+                // Listeners for Real-time Sync
+                const scheduleRef = doc(db, 'artifacts', appId, 'public', 'data', 'trip_data', 'schedule');
+                const expenseRef = doc(db, 'artifacts', appId, 'public', 'data', 'trip_data', 'expenses');
+                const companionRef = doc(db, 'artifacts', appId, 'public', 'data', 'trip_data', 'companions');
+
+                onSnapshot(scheduleRef, (doc) => {
+                    if (doc.exists()) {
+                        window.scheduleData = doc.data().items;
+                        window.renderDaySelector();
+                        window.renderTimeline(window.currentDayIndex);
+                        document.getElementById('loading-mask').style.opacity = '0';
+                        setTimeout(() => document.getElementById('loading-mask').style.display = 'none', 500);
+                    } else {
+                        // Init default if empty
+                        window.saveToFirestore('schedule', window.defaultScheduleData);
+                    }
+                });
+
+                onSnapshot(expenseRef, (doc) => {
+                    if (doc.exists()) {
+                        window.expenses = doc.data().items;
+                        window.renderExpenses(); // Also updates stats and filter
+                    } else {
+                        window.saveToFirestore('expenses', []);
+                    }
+                });
+
+                onSnapshot(companionRef, (doc) => {
+                    if (doc.exists()) {
+                        window.companions = doc.data().items;
+                        window.updatePayerSelect();
+                        window.renderShareButtons();
+                        window.renderFilter();
+                    } else {
+                        window.saveToFirestore('companions', ["我"]);
+                    }
+                });
+
+            } catch (e) { console.error("Auth error:", e); }
+        }
+
+        initFirebase();
+    </script>
 
     <script>
         // --- 資料與參數 ---
         const EXCHANGE_RATE = 0.24;
-        const defaultScheduleData = [
-            { date: "27", month: "11", day: "Day 1", items: [{ time: "07:00", endTime: "08:00", title: "抵達落機", type: "transport", location: "台灣桃園國際機場", note: "歡迎來到台灣！", description: "記得先去領取事先預訂的 WiFi 機或 SIM 卡。" }, { time: "11:00", endTime: "11:30", title: "民宿放行李", type: "stay", location: "台北", note: "確認 Check-in 時間", description: "如果是使用 Airbnb，記得先與房東聯繫確認大門密碼。" }, { time: "13:00", endTime: "14:00", title: "程味珍意麵滷味", type: "food", location: "程味珍意麵", tags: ["必吃: 滷味"], note: "西門町老字號", description: "滷味非常入味！必點滷蘿蔔、大豆干。" }, { time: "15:00", endTime: "17:00", title: "西門町", type: "sight", location: "西門町", tags: ["逛街"], note: "潮流聖地", description: "推薦小吃：阿宗麵線、幸福堂。" }, { time: "17:00", endTime: "18:30", title: "妳有咖啡 neo café", type: "food", location: "妳有咖啡 neo cafe", tags: ["推薦: 布丁"], note: "復古咖啡廳", description: "大人味焦糖布丁必點。" }, { time: "19:00", endTime: "20:30", title: "詹記麻辣火鍋", type: "food", location: "詹記麻辣火鍋 西門大世界", tags: ["必吃: 鴨血"], note: "台北最難訂", description: "鴨血像果凍一樣滑嫩！" }, { time: "21:00", endTime: "22:30", title: "南機場夜市", type: "food", location: "南機場夜市", tags: ["必吃: 水餃"], note: "在地人最愛", description: "推薦：來來水餃。" }] },
-            { date: "28", month: "11", day: "Day 2", items: [{ time: "09:00", endTime: "10:00", title: "阜杭豆漿", type: "food", location: "阜杭豆漿", note: "必比登推薦", description: "厚燒餅夾蛋非常好吃！" }, { time: "12:00", endTime: "14:00", title: "九份 / 十分", type: "sight", location: "九份老街", tags: ["必吃: 芋圓"], note: "神隱少女場景", description: "先去十分放天燈，再去九份吃芋圓。" }, { time: "16:00", endTime: "17:30", title: "猴硐貓村", type: "sight", location: "猴硐貓村", tags: ["貓咪"], note: "貓奴天堂", description: "不要開閃光燈拍照喔。" }, { time: "19:00", endTime: "20:30", title: "大股熟成燒肉", type: "food", location: "大股熟成燒肉專門 台北南京店", tags: ["必點: 牛舌"], note: "清酒販賣機", description: "專人代烤，牛舌超好吃。" }, { time: "21:00", endTime: "22:00", title: "寧夏夜市", type: "food", location: "寧夏夜市", tags: ["必吃: 芋丸"], note: "小而美", description: "劉芋仔蛋黃芋餅必排。" }] },
-            { date: "29", month: "11", day: "Day 3", items: [{ time: "11:00", endTime: "12:30", title: "犁園湯包館", type: "food", location: "犁園湯包館", tags: ["必點: 絲瓜湯包"], note: "平價鼎泰豐", description: "羅勒鮮蚵湯包很有特色。" }, { time: "14:00", endTime: "15:00", title: "三創生活園區", type: "sight", location: "三創生活園區", tags: ["3C"], note: "科技商場", description: "旁邊就是光華商場。" }, { time: "15:00", endTime: "17:00", title: "華山文創園區", type: "sight", location: "華山1914文化創意產業園區", tags: ["展覽"], note: "文青必去", description: "舊酒廠改建，很好拍照。" }, { time: "19:00", endTime: "20:30", title: "拾漁", type: "food", location: "拾漁 永康店", tags: ["日式無菜單"], note: "高CP值", description: "記得準時到。" }, { time: "21:00", endTime: "22:30", title: "饒河夜市", type: "food", location: "饒河街觀光夜市", tags: ["必吃: 胡椒餅"], note: "藥燉排骨", description: "陳董藥燉排骨冬天必吃。" }] },
-            { date: "30", month: "11", day: "Day 4", items: [{ time: "12:00", endTime: "13:30", title: "比漾廣場", type: "shop", location: "比漾廣場", tags: ["逛街"], note: "永和百貨", description: "在地百貨公司。" }, { time: "14:00", endTime: "15:30", title: "樂華商圈", type: "sight", location: "樂華夜市", tags: ["逛街"], note: "路寬好逛", description: "下午也有店家營業。" }, { time: "16:00", endTime: "17:00", title: "Chii! Gelato", type: "food", location: "Chii! Gelato", tags: ["推薦: 開心果"], note: "義式冰淇淋", description: "口味非常道地。" }, { time: "19:00", endTime: "20:30", title: "金月日本鍋", type: "food", location: "金月日本鍋料理擔當", tags: ["必點: 清酒湯底"], note: "專人服務", description: "清酒湯底煮海鮮很鮮甜。" }, { time: "21:00", endTime: "22:00", title: "臨江街夜市", type: "food", location: "臨江街觀光夜市", tags: ["必吃: 湯圓"], note: "通化夜市", description: "御品元冰火湯圓必吃。" }] },
-            { date: "31", month: "11", day: "Day 5", items: [{ time: "12:00", endTime: "12:30", title: "Check Out", type: "stay", location: "台北", note: "行李寄放?", description: "檢查隨身物品。" }, { time: "14:00", endTime: "17:00", title: "華泰名品城", type: "shop", location: "GLORIA OUTLETS 華泰名品城", tags: ["Outlet"], note: "最後衝刺", description: "美式露天 Outlet。" }, { time: "22:00", endTime: "23:00", title: "回香港", type: "transport", location: "台灣桃園國際機場", note: "平安回家", description: "提早2.5小時到機場。" }] }
+        // Default Data moved to window for Firebase access
+        window.defaultScheduleData = [
+            { date: "27", month: "11", day: "Day 1", items: [{ time: "07:00", endTime: "08:00", title: "抵達落機", type: "transport", location: "台灣桃園國際機場", note: "歡迎來到台灣！", description: "記得先去領取事先預訂的 WiFi 機或 SIM 卡。" }, { time: "11:00", endTime: "11:30", title: "民宿放行李", type: "stay", location: "台北", note: "確認 Check-in 時間", description: "如果是使用 Airbnb，記得先與房東聯繫確認大門密碼。" }, { time: "13:00", endTime: "14:00", title: "程味珍意麵滷味", type: "food", location: "程味珍意麵", tags: ["必吃: 滷味"], note: "西門町老字號", description: "這家是西門町的老店，滷味非常入味！\n\n必點推薦：\n1. 招牌意麵\n2. 滷蘿蔔\n3. 大豆干" }] },
+            { date: "28", month: "11", day: "Day 2", items: [] }, { date: "29", month: "11", day: "Day 3", items: [] }, { date: "30", month: "11", day: "Day 4", items: [] }, { date: "31", month: "11", day: "Day 5", items: [] }
         ];
 
-        let scheduleData = [];
-        let currentDayIndex = 0;
-        let expenses = JSON.parse(localStorage.getItem('tw_trip_expenses') || '[]');
-        let companions = JSON.parse(localStorage.getItem('tw_trip_companions') || '["我"]');
-        let currentFilter = 'ALL'; 
+        // Global State
+        window.scheduleData = [];
+        window.currentDayIndex = 0;
+        window.expenses = [];
+        window.companions = ["我"];
+        window.currentFilter = 'ALL';
 
+        // Init UI (Firebase will override data later)
         function init() {
-            const savedSchedule = localStorage.getItem('tw_trip_schedule');
-            scheduleData = savedSchedule ? JSON.parse(savedSchedule) : JSON.parse(JSON.stringify(defaultScheduleData));
-            if(!savedSchedule) saveSchedule();
-            
             lucide.createIcons();
-            renderDaySelector();
-            renderTimeline(0);
-            
-            renderExpenses(); 
-            updatePayerSelect();
-            renderShareButtons();
+            generateHourlyWeather();
             
             document.getElementById('expense-amount').addEventListener('input', function(e) {
                 const val = parseInt(e.target.value) || 0;
@@ -357,198 +422,126 @@
             });
         }
 
-        // --- 天氣功能 (模擬) ---
-        function generateHourlyWeather() {
-            const weathers = [
-                { icon: 'sun', temp: 22 }, { icon: 'cloud-sun', temp: 24 }, { icon: 'cloud', temp: 23 },
-                { icon: 'cloud-rain', temp: 20 }, { icon: 'cloud-lightning', temp: 19 }
-            ];
-            let html = '';
-            // 模擬 06:00 - 23:00
-            for (let i = 6; i <= 23; i++) {
-                const mock = weathers[Math.floor(Math.random() * weathers.length)];
-                const temp = mock.temp + Math.floor(Math.random() * 3); // 隨機微調
-                const timeStr = i.toString().padStart(2, '0') + ":00";
-                
-                html += `
-                    <div class="weather-scroll-item flex flex-col items-center justify-center bg-stone-50 rounded-xl py-2 px-1 snap-start">
-                        <span class="text-[10px] text-stone-400 font-mono mb-1">${timeStr}</span>
-                        <i data-lucide="${mock.icon}" class="w-5 h-5 text-stone-600 mb-1"></i>
-                        <span class="text-xs font-bold text-stone-800">${temp}°</span>
-                    </div>
-                `;
-            }
-            document.getElementById('hourly-weather-container').innerHTML = html;
-            lucide.createIcons();
-        }
-
-        // --- 日期與天數編輯功能 ---
-        const dateModal = document.getElementById('date-modal');
-        const tripDaysInput = document.getElementById('trip-days-input');
+        // Overwrite local storage functions with Cloud Sync
+        function saveSchedule() { window.saveToFirestore('schedule', window.scheduleData); }
         
-        function openDateModal() {
-            // 預設顯示當前的資料
-            // 1. 填充日期 (假設 scheduleData[0] 有資料)
-            // 這裡需要簡單的反推年份，因為我們只存了 date/month
-            // 為了簡化體驗，我們讓使用者自己選新的開始日期，不預填舊的 (因為年份未存)
-            // 或者預設為今天
-            const today = new Date().toISOString().split('T')[0];
-            document.getElementById('start-date-input').value = today;
-            
-            // 2. 填充天數
-            tripDaysInput.value = scheduleData.length;
-            
-            dateModal.classList.remove('hidden');
+        // Core Logic
+        window.renderDaySelector = function() { 
+            const c = document.getElementById('day-selector'); 
+            c.innerHTML = window.scheduleData.map((d, i) => `<button onclick="selectDay(${i})" class="day-btn flex-shrink-0 flex flex-col items-center justify-center w-[60px] h-[72px] rounded-2xl transition-all border border-transparent tap-effect ${i===window.currentDayIndex?'bg-[#433D3C] text-[#FEFDF5] shadow-lg shadow-stone-200':'bg-white text-stone-300'}"><span class="text-[10px] font-bold tracking-wide opacity-80">${d.day}</span><span class="text-xl font-bold font-mono mt-1">${d.month}/${d.date}</span></button>`).join(''); 
         }
         
-        function closeDateModal() { dateModal.classList.add('hidden'); }
-        
-        function changeDays(delta) {
-            let current = parseInt(tripDaysInput.value);
-            let newVal = current + delta;
-            if (newVal < 1) newVal = 1;
-            tripDaysInput.value = newVal;
-        }
-        
-        function updateTravelDates() {
-            const dateInput = document.getElementById('start-date-input').value;
-            const daysInput = parseInt(tripDaysInput.value);
-            
-            if (!dateInput) return alert("請選擇出發日期");
-            if (!daysInput || daysInput < 1) return alert("天數必須大於 1");
-            
-            const startDate = new Date(dateInput);
-            const currentLength = scheduleData.length;
-            
-            // 1. 調整天數 (陣列長度)
-            if (daysInput > currentLength) {
-                // 增加天數
-                for (let i = currentLength; i < daysInput; i++) {
-                    scheduleData.push({
-                        date: "", // 稍後計算
-                        month: "",
-                        day: `Day ${i + 1}`,
-                        items: [] // 空行程
-                    });
-                }
-            } else if (daysInput < currentLength) {
-                // 減少天數 (直接截斷)
-                if(confirm(`確定要將天數減少為 ${daysInput} 天嗎？後面 ${currentLength - daysInput} 天的行程將被刪除。`)) {
-                    scheduleData.length = daysInput;
-                } else {
-                    return; // 取消操作
-                }
-            }
-            
-            // 2. 重新計算所有日期
-            scheduleData.forEach((dayItem, index) => {
-                const d = new Date(startDate);
-                d.setDate(startDate.getDate() + index);
-                
-                dayItem.date = d.getDate().toString();
-                dayItem.month = (d.getMonth() + 1).toString();
-                dayItem.day = `Day ${index + 1}`;
-            });
-            
-            saveSchedule();
-            renderDaySelector();
-            
-            // 確保 currentDayIndex 不會超出範圍
-            if (currentDayIndex >= scheduleData.length) {
-                currentDayIndex = scheduleData.length - 1;
-            }
-            
-            renderTimeline(currentDayIndex);
-            closeDateModal();
-        }
-
-        // ... (其他核心邏輯: Schedule, Modal, Expense 保持不變) ...
-        function saveSchedule() { localStorage.setItem('tw_trip_schedule', JSON.stringify(scheduleData)); }
-        function resetToDefault() { if(confirm("恢復預設行程？")) { scheduleData = JSON.parse(JSON.stringify(defaultScheduleData)); saveSchedule(); renderTimeline(currentDayIndex); } }
-        function renderDaySelector() { const c = document.getElementById('day-selector'); c.innerHTML = scheduleData.map((d, i) => `<button onclick="selectDay(${i})" class="day-btn flex-shrink-0 flex flex-col items-center justify-center w-[60px] h-[72px] rounded-2xl transition-all border border-transparent tap-effect ${i===0?'bg-[#433D3C] text-[#FEFDF5] shadow-lg shadow-stone-200':'bg-white text-stone-300'}"><span class="text-[10px] font-bold tracking-wide opacity-80">${d.day}</span><span class="text-xl font-bold font-mono mt-1">${d.month}/${d.date}</span></button>`).join(''); }
-        function selectDay(i) { 
-            currentDayIndex = i; 
+        window.selectDay = function(i) { 
+            window.currentDayIndex = i; 
             document.querySelectorAll('.day-btn').forEach((b, idx) => { b.className = `day-btn flex-shrink-0 flex flex-col items-center justify-center w-[60px] h-[72px] rounded-2xl transition-all border border-transparent tap-effect ${idx===i?'bg-[#433D3C] text-[#FEFDF5] shadow-lg shadow-stone-200 transform scale-105':'bg-white text-stone-300'}`; }); 
-            renderTimeline(i);
-            // 切換日期時重新生成天氣 (模擬不同天的天氣)
+            window.renderTimeline(i);
             generateHourlyWeather(); 
         }
         
-        function renderTimeline(i) { 
+        window.renderTimeline = function(i) { 
             const c = document.getElementById('timeline-container'); 
-            const d = scheduleData[i];
+            if (!window.scheduleData[i]) return;
+            const d = window.scheduleData[i];
             d.items.sort((a,b)=>a.time.localeCompare(b.time));
-            // 移除了舊的天氣標題，因為已經有獨立區塊
             
             let html = d.items.map((item, idx) => {
                 let icon = item.type==='food'?'utensils':item.type==='transport'?'bus':item.type==='shop'?'shopping-bag':item.type==='stay'?'bed':'map-pin';
                 let color = item.type==='food'?'text-orange-500 bg-orange-50':item.type==='transport'?'text-blue-500 bg-blue-50':item.type==='shop'?'text-pink-500 bg-pink-50':item.type==='stay'?'text-purple-500 bg-purple-50':'text-stone-500 bg-stone-100';
                 let tags = item.tags ? item.tags.map(t => `<span class="text-[10px] px-2.5 py-1 rounded-lg font-bold bg-stone-50 text-stone-500 ${t.includes('必')?'tag-must-eat':''}">${t}</span>`).join('') : '';
-                
                 let timeDisplay = `<div class="text-center"><span class="text-xs font-bold text-stone-400 font-mono block leading-tight">${item.time}</span>`;
                 if(item.endTime) { timeDisplay += `<span class="text-[10px] text-stone-300 font-mono block leading-tight my-0.5">↓</span><span class="text-xs font-bold text-stone-400 font-mono block leading-tight">${item.endTime}</span>`; }
                 timeDisplay += `</div>`;
 
                 return `<div onclick="openDetailModal(${i}, ${idx})" class="card-clickable bg-white rounded-[24px] p-5 zen-shadow relative overflow-hidden animate-slide-up mb-4 border border-white active:bg-stone-50 transition-colors"><div class="flex gap-4"><div class="flex flex-col items-center pt-1 w-12 flex-shrink-0">${timeDisplay}<div class="w-10 h-10 rounded-full flex items-center justify-center ${color} mt-2"><i data-lucide="${icon}" class="w-5 h-5"></i></div><div class="h-full w-0.5 bg-stone-100 my-2 rounded-full"></div></div><div class="flex-1 pb-2 min-w-0"><div class="flex justify-between items-start"><h3 class="font-bold text-[#433D3C] text-lg leading-tight truncate mr-2">${item.title}</h3></div><div class="flex items-center gap-2 mt-2 mb-3"><div class="text-xs flex items-center gap-1.5 bg-stone-50 text-stone-500 px-3 py-1.5 rounded-xl max-w-full truncate font-medium"><i data-lucide="map-pin" class="w-3 h-3 flex-shrink-0"></i><span class="truncate">${item.location||'設定地點'}</span></div></div>${item.note?`<p class="text-xs text-stone-400 mt-1 line-clamp-2 leading-relaxed bg-[#FEFDF5] p-2 rounded-lg">${item.note}</p>`:''}<div class="flex flex-wrap gap-2 mt-3">${tags}</div><div class="flex justify-end gap-2 mt-3 pt-2 border-t border-stone-50"><button onclick="event.stopPropagation(); openEditModal(${i}, ${idx})" class="px-3 py-1.5 bg-stone-100 rounded-lg text-xs font-bold text-stone-500 tap-effect flex items-center gap-1"><i data-lucide="pencil" class="w-3 h-3"></i> 編輯</button><button onclick="event.stopPropagation(); deleteScheduleItem(${i}, ${idx})" class="px-3 py-1.5 bg-red-50 rounded-lg text-xs font-bold text-red-400 tap-effect flex items-center gap-1"><i data-lucide="trash-2" class="w-3 h-3"></i> 刪除</button></div></div></div></div>`
             }).join('') + `<button onclick="openAddModal(${i})" class="w-full py-4 rounded-[24px] border-2 border-dashed border-stone-200 text-stone-300 hover:border-stone-300 hover:text-stone-500 transition-all flex items-center justify-center gap-2 tap-effect mt-2 bg-white/50"><i data-lucide="plus" class="w-5 h-5"></i><span class="font-bold">新增行程</span></button>`;
-            
             c.innerHTML = html;
             lucide.createIcons();
         }
 
-        // ... (Expense Logic, Filters, Add Expense, Delete Expense etc. - same as before) ...
-        function setFilter(name) { currentFilter = name; renderExpenses(); }
-        function renderFilter() { const c = document.getElementById('member-filter-container'); let h = `<button onclick="setFilter('ALL')" class="flex-shrink-0 px-4 py-1.5 rounded-full text-xs transition-all ${currentFilter === 'ALL' ? 'filter-btn-active' : 'filter-btn-inactive'}">全體</button>`; companions.forEach(n => { h += `<button onclick="setFilter('${n}')" class="flex-shrink-0 px-4 py-1.5 rounded-full text-xs transition-all ${currentFilter === n ? 'filter-btn-active' : 'filter-btn-inactive'}">${n}</button>`; }); c.innerHTML = h; }
-        function renderExpenses() {
+        // Expense Logic
+        window.setFilter = function(name) { window.currentFilter = name; window.renderExpenses(); }
+        window.renderFilter = function() { const c = document.getElementById('member-filter-container'); let h = `<button onclick="setFilter('ALL')" class="flex-shrink-0 px-4 py-1.5 rounded-full text-xs transition-all ${window.currentFilter === 'ALL' ? 'filter-btn-active' : 'filter-btn-inactive'}">全體</button>`; window.companions.forEach(n => { h += `<button onclick="setFilter('${n}')" class="flex-shrink-0 px-4 py-1.5 rounded-full text-xs transition-all ${window.currentFilter === n ? 'filter-btn-active' : 'filter-btn-inactive'}">${n}</button>`; }); c.innerHTML = h; }
+        
+        window.renderExpenses = function() {
             const list = document.getElementById('expense-list');
             const totalTwdEl = document.getElementById('total-expense-twd');
             const totalHkdEl = document.getElementById('total-expense-hkd');
             const titleEl = document.getElementById('budget-title');
             const listStatusEl = document.getElementById('list-filter-status');
             let displayExpenses = []; let totalTWD = 0;
-            if (currentFilter === 'ALL') { displayExpenses = expenses; titleEl.innerText = "總消費 (ALL)"; listStatusEl.innerText = "顯示全部"; } else { titleEl.innerText = `個人消費 (${currentFilter})`; listStatusEl.innerText = `只顯示 ${currentFilter} 的分攤項目`; displayExpenses = expenses.filter(ex => { const sharers = ex.sharedBy && ex.sharedBy.length > 0 ? ex.sharedBy : ["我"]; return sharers.includes(currentFilter); }); }
-            if (currentFilter === 'ALL') { totalTWD = expenses.reduce((sum, ex) => sum + parseInt(ex.amount), 0); } else { totalTWD = displayExpenses.reduce((sum, ex) => { const sharersCount = (ex.sharedBy && ex.sharedBy.length > 0) ? ex.sharedBy.length : 1; return sum + (parseInt(ex.amount) / sharersCount); }, 0); }
+            
+            if (window.currentFilter === 'ALL') { 
+                displayExpenses = window.expenses; titleEl.innerText = "總消費 (ALL)"; listStatusEl.innerText = "顯示全部"; 
+                totalTWD = window.expenses.reduce((sum, ex) => sum + parseInt(ex.amount), 0);
+            } else { 
+                titleEl.innerText = `個人消費 (${window.currentFilter})`; listStatusEl.innerText = `只顯示 ${window.currentFilter} 的分攤項目`; 
+                displayExpenses = window.expenses.filter(ex => { const sharers = ex.sharedBy && ex.sharedBy.length > 0 ? ex.sharedBy : ["我"]; return sharers.includes(window.currentFilter); }); 
+                totalTWD = displayExpenses.reduce((sum, ex) => { const sharersCount = (ex.sharedBy && ex.sharedBy.length > 0) ? ex.sharedBy.length : 1; return sum + (parseInt(ex.amount) / sharersCount); }, 0); 
+            }
+            
             list.innerHTML = displayExpenses.map((ex, i) => {
-                const originalIndex = expenses.indexOf(ex);
+                const originalIndex = window.expenses.indexOf(ex);
                 const fullAmount = parseInt(ex.amount);
                 let displayAmount = fullAmount; let displayLabel = "總額"; let detailText = ""; let amountClass = "text-stone-800";
-                if (currentFilter !== 'ALL') { const sharersCount = (ex.sharedBy && ex.sharedBy.length > 0) ? ex.sharedBy.length : 1; displayAmount = fullAmount / sharersCount; displayLabel = "應付"; detailText = `(總額 $${fullAmount} ÷ ${sharersCount}人)`; amountClass = "text-blue-600"; }
+                if (window.currentFilter !== 'ALL') { const sharersCount = (ex.sharedBy && ex.sharedBy.length > 0) ? ex.sharedBy.length : 1; displayAmount = fullAmount / sharersCount; displayLabel = "應付"; detailText = `(總額 $${fullAmount} ÷ ${sharersCount}人)`; amountClass = "text-blue-600"; }
                 const amountHKD = Math.round(displayAmount * EXCHANGE_RATE); const amountTWD = Math.round(displayAmount);
-                const payer = ex.payer || "我"; const sharedBy = ex.sharedBy || ["我"]; const shareText = sharedBy.length === companions.length ? "全員" : sharedBy.join(",");
+                const payer = ex.payer || "我"; const sharedBy = ex.sharedBy || ["我"]; const shareText = sharedBy.length === window.companions.length ? "全員" : sharedBy.join(",");
                 return `<div class="flex flex-col bg-white p-4 rounded-[20px] shadow-sm border border-stone-100"><div class="flex justify-between items-start mb-2"><div><span class="text-base font-bold text-stone-700 block">${ex.item}</span><span class="text-[10px] text-stone-400">由 ${payer} 先付 • 分攤: ${shareText}</span></div><div class="text-right"><div class="text-[10px] text-stone-300 font-bold mb-0.5 text-right">${displayLabel}</div><div class="font-mono font-bold ${amountClass} text-lg">NT$ ${amountTWD}</div><div class="font-mono text-xs text-stone-400">≈ HK$ ${amountHKD}</div>${detailText ? `<div class="text-[10px] text-stone-400 mt-0.5">${detailText}</div>` : ''}</div></div><div class="flex justify-end border-t border-stone-50 pt-2 mt-1"><button onclick="deleteExpense(${originalIndex})" class="text-xs text-stone-300 hover:text-red-400 flex items-center gap-1 px-2 py-1 rounded tap-effect"><i data-lucide="trash-2" class="w-3 h-3"></i> 刪除</button></div></div>`;
             }).reverse().join('') || `<div class="text-center text-stone-300 text-sm py-8">沒有相關紀錄</div>`;
             totalTwdEl.innerText = Math.round(totalTWD).toLocaleString(); totalHkdEl.innerText = Math.round(totalTWD * EXCHANGE_RATE).toLocaleString();
-            renderFilter(); localStorage.setItem('tw_trip_expenses', JSON.stringify(expenses)); lucide.createIcons();
+            window.renderFilter(); lucide.createIcons();
         }
-        function addExpense() { const item = document.getElementById('expense-item').value; const amount = document.getElementById('expense-amount').value; const payer = document.getElementById('expense-payer').value; const shareBtns = document.querySelectorAll('.share-toggle-btn.share-btn-selected'); const sharedBy = Array.from(shareBtns).map(btn => btn.getAttribute('data-name')); if(!item || !amount) { alert("請輸入項目和金額"); return; } if(sharedBy.length === 0) { alert("請至少選擇一位分攤對象"); return; } expenses.push({ item, amount, payer, sharedBy }); document.getElementById('expense-item').value = ''; document.getElementById('expense-amount').value = ''; document.getElementById('input-hkd-preview').innerText = '0'; renderExpenses(); }
-        function deleteExpense(index) { if(confirm('確定刪除這筆紀錄？')) { expenses.splice(index, 1); renderExpenses(); } }
-        function promptAddCompanion() { const name = prompt("請輸入旅伴名字："); if (name && name.trim() !== "") { if (!companions.includes(name.trim())) { companions.push(name.trim()); localStorage.setItem('tw_trip_companions', JSON.stringify(companions)); updatePayerSelect(); renderShareButtons(); renderFilter(); } else { alert("已經在名單內囉！"); } } }
-        function updatePayerSelect() { document.getElementById('expense-payer').innerHTML = companions.map(c => `<option value="${c}">${c}</option>`).join(''); }
-        function renderShareButtons() { document.getElementById('share-buttons-container').innerHTML = companions.map(c => `<button type="button" class="share-toggle-btn share-btn-selected px-3 py-1.5 rounded-lg text-xs font-bold border transition-colors" data-name="${c}" onclick="toggleShare(this)">${c}</button>`).join(''); }
-        function toggleShare(btn) { if (btn.classList.contains('share-btn-selected')) { btn.classList.remove('share-btn-selected'); btn.classList.add('share-btn-unselected'); } else { btn.classList.remove('share-btn-unselected'); btn.classList.add('share-btn-selected'); } }
-        function selectAllShares() { document.querySelectorAll('.share-toggle-btn').forEach(btn => { btn.classList.remove('share-btn-unselected'); btn.classList.add('share-btn-selected'); }); }
 
-        // ... (Modals: Detail & Edit) ...
+        window.addExpense = function() { const item = document.getElementById('expense-item').value; const amount = document.getElementById('expense-amount').value; const payer = document.getElementById('expense-payer').value; const shareBtns = document.querySelectorAll('.share-toggle-btn.share-btn-selected'); const sharedBy = Array.from(shareBtns).map(btn => btn.getAttribute('data-name')); if(!item || !amount) { alert("請輸入項目和金額"); return; } if(sharedBy.length === 0) { alert("請至少選擇一位分攤對象"); return; } window.expenses.push({ item, amount, payer, sharedBy }); document.getElementById('expense-item').value = ''; document.getElementById('expense-amount').value = ''; document.getElementById('input-hkd-preview').innerText = '0'; window.saveToFirestore('expenses', window.expenses); }
+        window.deleteExpense = function(index) { if(confirm('確定刪除這筆紀錄？')) { window.expenses.splice(index, 1); window.saveToFirestore('expenses', window.expenses); } }
+        
+        window.promptAddCompanion = function() { const name = prompt("請輸入旅伴名字："); if (name && name.trim() !== "") { if (!window.companions.includes(name.trim())) { window.companions.push(name.trim()); window.saveToFirestore('companions', window.companions); } else { alert("已經在名單內囉！"); } } }
+        window.updatePayerSelect = function() { document.getElementById('expense-payer').innerHTML = window.companions.map(c => `<option value="${c}">${c}</option>`).join(''); }
+        window.renderShareButtons = function() { document.getElementById('share-buttons-container').innerHTML = window.companions.map(c => `<button type="button" class="share-toggle-btn share-btn-selected px-3 py-1.5 rounded-lg text-xs font-bold border transition-colors" data-name="${c}" onclick="toggleShare(this)">${c}</button>`).join(''); }
+        window.toggleShare = function(btn) { if (btn.classList.contains('share-btn-selected')) { btn.classList.remove('share-btn-selected'); btn.classList.add('share-btn-unselected'); } else { btn.classList.remove('share-btn-unselected'); btn.classList.add('share-btn-selected'); } }
+        window.selectAllShares = function() { document.querySelectorAll('.share-toggle-btn').forEach(btn => { btn.classList.remove('share-btn-unselected'); btn.classList.add('share-btn-selected'); }); }
+
+        // Modals
         const detailModal = document.getElementById('detail-modal'); const detailContent = document.getElementById('detail-content');
-        function openDetailModal(dayIndex, itemIndex) { const item = scheduleData[dayIndex].items[itemIndex]; let icon = item.type==='food'?'utensils':item.type==='transport'?'bus':item.type==='shop'?'shopping-bag':item.type==='stay'?'bed':'map-pin'; let timeStr = item.time; if (item.endTime) timeStr += ` - ${item.endTime}`; detailContent.innerHTML = `<div class="flex items-start justify-between mb-2"><div class="w-12 h-12 rounded-2xl bg-stone-100 flex items-center justify-center text-stone-600"><i data-lucide="${icon}" class="w-6 h-6"></i></div><div class="text-right"><p class="text-2xl font-mono font-bold text-stone-800">${timeStr}</p><p class="text-xs text-stone-400 font-bold">11月${scheduleData[dayIndex].date}日</p></div></div><h2 class="text-2xl font-bold text-[#433D3C] mb-1 leading-tight">${item.title}</h2><button onclick="window.open('https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(item.location)}')" class="inline-flex items-center gap-1.5 text-blue-500 text-sm font-bold mb-4 tap-effect"><i data-lucide="map-pin" class="w-4 h-4"></i> ${item.location || '設定地點'} <i data-lucide="external-link" class="w-3 h-3"></i></button><div class="bg-white p-5 rounded-2xl border border-stone-100 shadow-sm"><h4 class="text-xs font-bold text-stone-400 mb-3 uppercase tracking-wider">ABOUT</h4><div class="text-stone-600 text-sm leading-relaxed space-y-2">${item.description ? item.description.split('\n').map(l=>`<p class="mb-2">${l}</p>`).join('') : '<p class="text-stone-400 italic">暫無詳細介紹...</p>'}</div></div>`; detailModal.classList.remove('hidden'); lucide.createIcons(); }
-        function closeDetailModal() { detailModal.classList.add('hidden'); }
+        window.openDetailModal = function(dayIndex, itemIndex) { const item = window.scheduleData[dayIndex].items[itemIndex]; let icon = item.type==='food'?'utensils':item.type==='transport'?'bus':item.type==='shop'?'shopping-bag':item.type==='stay'?'bed':'map-pin'; let timeStr = item.time; if (item.endTime) timeStr += ` - ${item.endTime}`; 
+            // description 讀取邏輯
+            const descriptionText = item.description ? item.description.split('\n').map(l=>`<p class="mb-2">${l}</p>`).join('') : '<p class="text-stone-400 italic">暫無詳細介紹...</p>';
+            detailContent.innerHTML = `<div class="flex items-start justify-between mb-2"><div class="w-12 h-12 rounded-2xl bg-stone-100 flex items-center justify-center text-stone-600"><i data-lucide="${icon}" class="w-6 h-6"></i></div><div class="text-right"><p class="text-2xl font-mono font-bold text-stone-800">${timeStr}</p><p class="text-xs text-stone-400 font-bold">11月${window.scheduleData[dayIndex].date}日</p></div></div><h2 class="text-2xl font-bold text-[#433D3C] mb-1 leading-tight">${item.title}</h2><button onclick="window.open('https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(item.location)}')" class="inline-flex items-center gap-1.5 text-blue-500 text-sm font-bold mb-4 tap-effect"><i data-lucide="map-pin" class="w-4 h-4"></i> ${item.location || '設定地點'} <i data-lucide="external-link" class="w-3 h-3"></i></button><div class="bg-white p-5 rounded-2xl border border-stone-100 shadow-sm"><h4 class="text-xs font-bold text-stone-400 mb-3 uppercase tracking-wider">ABOUT</h4><div class="text-stone-600 text-sm leading-relaxed space-y-2">${descriptionText}</div></div>`; 
+            detailModal.classList.remove('hidden'); lucide.createIcons(); 
+        }
+        window.closeDetailModal = function() { detailModal.classList.add('hidden'); }
         detailModal.addEventListener('click', (e) => { if (e.target === detailModal) closeDetailModal(); });
 
         const editModal = document.getElementById('edit-modal'); const modalTitle = document.getElementById('modal-title');
-        function openAddModal(dayIndex) { document.getElementById('edit-day-index').value = dayIndex; document.getElementById('edit-item-index').value = -1; modalTitle.innerText = "新增行程"; document.getElementById('edit-time').value = "12:00"; document.getElementById('edit-end-time').value = ""; document.getElementById('edit-type').value = "sight"; document.getElementById('edit-title').value = ""; document.getElementById('edit-location').value = ""; document.getElementById('edit-tags').value = ""; document.getElementById('edit-note').value = ""; document.getElementById('edit-description').value = ""; editModal.classList.remove('hidden'); }
-        function openEditModal(dayIndex, itemIndex) { const item = scheduleData[dayIndex].items[itemIndex]; document.getElementById('edit-day-index').value = dayIndex; document.getElementById('edit-item-index').value = itemIndex; modalTitle.innerText = "編輯行程"; document.getElementById('edit-time').value = item.time; document.getElementById('edit-end-time').value = item.endTime || ""; document.getElementById('edit-type').value = item.type; document.getElementById('edit-title').value = item.title; document.getElementById('edit-location').value = item.location; document.getElementById('edit-tags').value = item.tags?item.tags.join(', '):''; document.getElementById('edit-note').value = item.note||''; document.getElementById('edit-description').value = item.description||''; editModal.classList.remove('hidden'); }
-        function closeEditModal() { editModal.classList.add('hidden'); }
-        function saveScheduleItem(e) { e.preventDefault(); const d = parseInt(document.getElementById('edit-day-index').value); const i = parseInt(document.getElementById('edit-item-index').value); const item = { time: document.getElementById('edit-time').value, endTime: document.getElementById('edit-end-time').value, type: document.getElementById('edit-type').value, title: document.getElementById('edit-title').value, location: document.getElementById('edit-location').value, tags: document.getElementById('edit-tags').value.split(',').map(t=>t.trim()).filter(t=>t), note: document.getElementById('edit-note').value, description: document.getElementById('edit-description').value }; if (i === -1) scheduleData[d].items.push(item); else scheduleData[d].items[i] = item; saveSchedule(); renderTimeline(d); closeEditModal(); }
-        function deleteScheduleItem(d, i) { if(confirm("確定刪除？")) { scheduleData[d].items.splice(i, 1); saveSchedule(); renderTimeline(d); } }
+        window.openAddModal = function(dayIndex) { document.getElementById('edit-day-index').value = dayIndex; document.getElementById('edit-item-index').value = -1; modalTitle.innerText = "新增行程"; document.getElementById('edit-time').value = "12:00"; document.getElementById('edit-end-time').value = ""; document.getElementById('edit-type').value = "sight"; document.getElementById('edit-title').value = ""; document.getElementById('edit-location').value = ""; document.getElementById('edit-tags').value = ""; document.getElementById('edit-note').value = ""; document.getElementById('edit-description').value = ""; editModal.classList.remove('hidden'); }
+        window.openEditModal = function(dayIndex, itemIndex) { const item = window.scheduleData[dayIndex].items[itemIndex]; document.getElementById('edit-day-index').value = dayIndex; document.getElementById('edit-item-index').value = itemIndex; modalTitle.innerText = "編輯行程"; document.getElementById('edit-time').value = item.time; document.getElementById('edit-end-time').value = item.endTime || ""; document.getElementById('edit-type').value = item.type; document.getElementById('edit-title').value = item.title; document.getElementById('edit-location').value = item.location; document.getElementById('edit-tags').value = item.tags?item.tags.join(', '):''; document.getElementById('edit-note').value = item.note||''; document.getElementById('edit-description').value = item.description||''; editModal.classList.remove('hidden'); }
+        window.closeEditModal = function() { editModal.classList.add('hidden'); }
+        window.saveScheduleItem = function(e) { e.preventDefault(); const d = parseInt(document.getElementById('edit-day-index').value); const i = parseInt(document.getElementById('edit-item-index').value); const item = { time: document.getElementById('edit-time').value, endTime: document.getElementById('edit-end-time').value, type: document.getElementById('edit-type').value, title: document.getElementById('edit-title').value, location: document.getElementById('edit-location').value, tags: document.getElementById('edit-tags').value.split(',').map(t=>t.trim()).filter(t=>t), note: document.getElementById('edit-note').value, description: document.getElementById('edit-description').value }; if (i === -1) window.scheduleData[d].items.push(item); else window.scheduleData[d].items[i] = item; saveSchedule(); window.renderTimeline(d); closeEditModal(); }
+        window.deleteScheduleItem = function(d, i) { if(confirm("確定刪除？")) { window.scheduleData[d].items.splice(i, 1); saveSchedule(); window.renderTimeline(d); } }
         editModal.addEventListener('click', (e) => { if (e.target === editModal) closeEditModal(); });
 
-        function switchTab(tabId) { document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden')); document.getElementById(`view-${tabId}`).classList.remove('hidden'); ['schedule', 'info', 'budget'].forEach(id => { const btn = document.getElementById(`tab-${id}`); const span = btn.querySelector('span'); if(id === tabId) { btn.className = "active-tab flex items-center gap-2 px-5 py-3 tap-effect transition-all duration-300"; span.classList.remove('hidden'); } else { btn.className = "inactive-tab flex items-center gap-2 px-3 py-3 tap-effect transition-all duration-300"; span.classList.add('hidden'); } }); }
+        // Date & Days Logic
+        const dateModal = document.getElementById('date-modal');
+        window.openDateModal = function() { const today = new Date().toISOString().split('T')[0]; document.getElementById('start-date-input').value = today; document.getElementById('trip-days-input').value = window.scheduleData.length; dateModal.classList.remove('hidden'); }
+        window.closeDateModal = function() { dateModal.classList.add('hidden'); }
+        window.changeDays = function(delta) { let v = parseInt(document.getElementById('trip-days-input').value) + delta; if(v < 1) v = 1; document.getElementById('trip-days-input').value = v; }
+        window.updateTravelDates = function() {
+            const dStr = document.getElementById('start-date-input').value; const days = parseInt(document.getElementById('trip-days-input').value);
+            if(!dStr) return alert("請選擇日期");
+            const start = new Date(dStr);
+            if(days > window.scheduleData.length) { for(let i=window.scheduleData.length; i<days; i++) window.scheduleData.push({ date:"", month:"", day:`Day ${i+1}`, items:[] }); }
+            else if(days < window.scheduleData.length) { if(!confirm(`確定減少天數？`)) return; window.scheduleData.length = days; }
+            window.scheduleData.forEach((d, i) => { const dt = new Date(start); dt.setDate(start.getDate()+i); d.date=dt.getDate(); d.month=dt.getMonth()+1; d.day=`Day ${i+1}`; });
+            saveSchedule(); window.renderDaySelector(); window.renderTimeline(0); closeDateModal();
+        }
+
+        // Util
+        function generateHourlyWeather() { const ws = [{i:'sun',t:22},{i:'cloud-sun',t:24},{i:'cloud',t:23},{i:'cloud-rain',t:20}]; let h=''; for(let i=6;i<=23;i++){ const m=ws[Math.floor(Math.random()*ws.length)]; h+=`<div class="weather-scroll-item flex flex-col items-center justify-center bg-stone-50 rounded-xl py-2 px-1 snap-start"><span class="text-[10px] text-stone-400 font-mono mb-1">${i}:00</span><i data-lucide="${m.i}" class="w-5 h-5 text-stone-600 mb-1"></i><span class="text-xs font-bold text-stone-800">${m.t}°</span></div>`; } document.getElementById('hourly-weather-container').innerHTML=h; }
+        window.resetToDefault = function() { if(confirm("清除資料？")) { window.saveToFirestore('schedule', window.defaultScheduleData); } }
+        window.switchTab = function(tabId) { document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden')); document.getElementById(`view-${tabId}`).classList.remove('hidden'); ['schedule', 'info', 'budget'].forEach(id => { const btn = document.getElementById(`tab-${id}`); const span = btn.querySelector('span'); if(id === tabId) { btn.className = "active-tab flex items-center gap-2 px-5 py-3 tap-effect transition-all duration-300"; span.classList.remove('hidden'); } else { btn.className = "inactive-tab flex items-center gap-2 px-3 py-3 tap-effect transition-all duration-300"; span.classList.add('hidden'); } }); }
 
         init();
         
-        // 初始天氣渲染
-        generateHourlyWeather();
-
         const style = document.createElement('style');
         style.innerHTML = `@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } } @keyframes slide-up { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } } .animate-fade-in { animation: fade-in 0.4s ease-out; } .animate-slide-up { animation: slide-up 0.5s cubic-bezier(0.16, 1, 0.3, 1); }`;
         document.head.appendChild(style);
