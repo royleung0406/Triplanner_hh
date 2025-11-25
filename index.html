@@ -28,6 +28,8 @@
             --bg-color: #FEFDF5;
             --text-main: #433D3C;
             --text-sub: #9CA3AF;
+            --accent: #D4C4B7;
+            --highlight: #F43F5E;
         }
 
         body {
@@ -70,7 +72,7 @@
         .filter-btn-inactive { color: rgba(255,255,255,0.6); }
         .weather-scroll-item { min-width: 60px; }
         
-        /* 載入中遮罩 */
+        /* 狀態燈號與提示 */
         #sync-indicator {
             position: fixed; top: 10px; left: 50%; transform: translateX(-50%);
             background: rgba(67, 61, 60, 0.9); color: white;
@@ -277,7 +279,7 @@
                 <input type="hidden" id="edit-day-index"><input type="hidden" id="edit-item-index">
                 <div class="grid grid-cols-2 gap-3">
                     <div class="space-y-1"><label class="text-xs text-stone-500 font-bold ml-1">開始時間</label><input type="time" id="edit-time" class="w-full bg-white rounded-2xl p-4 text-sm font-medium border border-transparent focus:border-stone-200 focus:outline-none shadow-sm text-center"></div>
-                    <div class="space-y-1"><label class="text-xs text-stone-500 font-bold ml-1">結束時間</label><input type="time" id="edit-end-time" class="w-full bg-white rounded-2xl p-4 text-sm font-medium border border-transparent focus:border-stone-200 focus:outline-none shadow-sm text-center text-stone-500 placeholder-stone-300"></div>
+                    <div class="space-y-1"><label class="text-xs text-stone-500 font-bold ml-1">結束時間 (選填)</label><input type="time" id="edit-end-time" class="w-full bg-white rounded-2xl p-4 text-sm font-medium border border-transparent focus:border-stone-200 focus:outline-none shadow-sm text-center text-stone-500 placeholder-stone-300"></div>
                 </div>
                 <div class="space-y-1"><label class="text-xs text-stone-500 font-bold ml-1">類型</label><select id="edit-type" class="w-full bg-white rounded-2xl p-4 text-sm font-medium border border-transparent focus:border-stone-200 focus:outline-none shadow-sm appearance-none"><option value="sight">📷 景點</option><option value="food">🍜 美食</option><option value="shop">🛍️ 購物</option><option value="transport">🚌 交通</option><option value="stay">🛏️ 住宿</option></select></div>
                 <div class="space-y-1"><label class="text-xs text-stone-500 font-bold ml-1">標題</label><input type="text" id="edit-title" required class="w-full bg-white rounded-2xl p-4 text-sm font-bold border border-transparent focus:border-stone-200 focus:outline-none shadow-sm" placeholder="行程名稱"></div>
@@ -492,16 +494,19 @@
             const container = document.getElementById('trip-list-container');
             container.innerHTML = '';
 
+            // 這裡移除了「自動建立預設行程」的邏輯
+            // 只有當 window.myTrips 是空的時候，畫面會是空的
+            
             if (window.myTrips.length === 0) {
-                // 第一次使用，建立預設台灣行程
-                const defaultId = 'default_taiwan_' + Math.random().toString(36).substr(2, 5);
-                // 重要：擁有者設為當前用戶
-                await setDoc(doc(db, 'trips', defaultId), { meta: { name: '台灣五日遊', date: '2025-12-27', days: 5, ownerId: auth.currentUser.uid } });
-                await window.saveTripData(defaultId, 'schedule', window.defaultScheduleData);
-                await window.saveTripData(defaultId, 'expenses', []);
-                await window.saveTripData(defaultId, 'companions', ["我"]);
-                window.myTrips = [defaultId];
-                localStorage.setItem('my_trips', JSON.stringify(window.myTrips));
+                 container.innerHTML = `
+                    <div class="text-center text-stone-400 mt-20 flex flex-col items-center">
+                        <i data-lucide="map" class="w-12 h-12 mb-4 opacity-50"></i>
+                        <p class="text-lg font-bold">還沒有旅程</p>
+                        <p class="text-sm mt-2">點擊右上角的「+」開始規劃</p>
+                    </div>
+                `;
+                lucide.createIcons();
+                return;
             }
 
             let html = '';
