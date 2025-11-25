@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>旅遊小幫手 v4.3 (Smart Auth)</title>
+    <title>旅遊小幫手 v3.2 (Shared)</title>
     
     <!-- PWA Settings -->
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -124,20 +124,9 @@
         .trip-card-bg-1 { background: linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%); }
         .trip-card-bg-2 { background: linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%); }
         .trip-card-bg-3 { background: linear-gradient(135deg, #e0c3fc 0%, #8ec5fc 100%); }
-        
-        /* Environment Banner */
-        #env-banner {
-            background: #FFFBEB; color: #92400E; font-size: 10px; text-align: center; padding: 4px;
-            border-bottom: 1px solid #FCD34D; display: none;
-        }
     </style>
 </head>
 <body class="h-screen overflow-hidden bg-[#FEFDF5] relative">
-
-    <!-- Preview Mode Banner -->
-    <div id="env-banner">
-        ⚠️ 預覽模式：使用測試資料庫。若要使用 Google 登入，請下載 (Export) 後執行。
-    </div>
 
     <!-- 同步提示 -->
     <div id="sync-indicator">
@@ -156,14 +145,24 @@
                 <p class="text-stone-400 text-sm font-bold mt-1">選擇您的旅程或建立新計畫</p>
             </div>
             
-            <!-- User Profile / Login Button -->
-            <div id="user-auth-area">
-                <button onclick="loginWithGoogle()" class="flex flex-col items-center gap-1 group">
-                    <div class="w-10 h-10 rounded-full bg-white border border-stone-200 shadow-sm flex items-center justify-center overflow-hidden">
-                        <i data-lucide="user" class="w-5 h-5 text-stone-400"></i>
+            <div class="flex gap-3">
+                <!-- NEW: Join Trip Button -->
+                <button onclick="openJoinModal()" class="flex flex-col items-center gap-1 group">
+                    <div class="w-10 h-10 rounded-full bg-[#433D3C] border border-stone-200 shadow-sm flex items-center justify-center overflow-hidden tap-effect">
+                        <i data-lucide="qr-code" class="w-5 h-5 text-white"></i>
                     </div>
-                    <span class="text-[10px] font-bold text-stone-400 group-hover:text-[#433D3C]">登入備份</span>
+                    <span class="text-[10px] font-bold text-stone-400 group-hover:text-[#433D3C]">加入</span>
                 </button>
+
+                <!-- User Profile / Login Button -->
+                <div id="user-auth-area">
+                    <button onclick="loginWithGoogle()" class="flex flex-col items-center gap-1 group">
+                        <div class="w-10 h-10 rounded-full bg-white border border-stone-200 shadow-sm flex items-center justify-center overflow-hidden">
+                            <i data-lucide="user" class="w-5 h-5 text-stone-400"></i>
+                        </div>
+                        <span class="text-[10px] font-bold text-stone-400 group-hover:text-[#433D3C]">登入</span>
+                    </button>
+                </div>
             </div>
         </header>
 
@@ -171,11 +170,8 @@
             <!-- JS Generated Cards -->
         </main>
 
-        <!-- Bottom Action Bar -->
-        <div class="absolute bottom-8 right-6 flex gap-3">
-            <button onclick="openJoinTripModal()" class="h-14 px-6 bg-white rounded-full text-[#433D3C] shadow-lg flex items-center justify-center gap-2 tap-effect font-bold border border-stone-100">
-                <i data-lucide="link" class="w-5 h-5"></i> 加入行程
-            </button>
+        <!-- Floating Add Button -->
+        <div class="absolute bottom-8 right-6">
             <button onclick="openAddTripModal()" class="w-14 h-14 bg-[#433D3C] rounded-full text-white shadow-xl flex items-center justify-center tap-effect hover:scale-105 transition-transform">
                 <i data-lucide="plus" class="w-7 h-7"></i>
             </button>
@@ -184,36 +180,35 @@
 
     <!-- VIEW 2: TRIP DETAIL (The Original App) -->
     <div id="view-trip-detail" class="page-view page-hidden">
-        <!-- 頂部資訊 -->
+        <!-- 頂部資訊 (Modified with Back Button) -->
         <header class="bg-[#FEFDF5]/90 backdrop-blur-sm pt-safe-top sticky top-0 z-20 px-4 py-3 flex justify-between items-center border-b border-stone-100/50">
             <div class="flex items-center gap-3">
                 <button onclick="backToTripList()" class="w-10 h-10 rounded-full bg-white border border-stone-100 flex items-center justify-center text-stone-500 tap-effect shadow-sm">
                     <i data-lucide="chevron-left" class="w-6 h-6"></i>
                 </button>
-                <div class="min-w-0">
+                <div>
                     <p class="text-[10px] text-gray-400 tracking-widest mb-0.5 font-bold uppercase" id="header-subtitle">TRIP</p>
                     <div class="flex items-center gap-2">
                         <h1 class="text-lg font-bold tracking-wide text-[#433D3C] truncate max-w-[140px]" id="header-title">Loading...</h1>
                         <button onclick="openDateModal()" class="text-stone-400 hover:text-stone-600 tap-effect p-1">
                             <i data-lucide="settings-2" class="w-4 h-4"></i>
                         </button>
+                        <!-- NEW: Invite Button -->
+                        <button onclick="openInviteModal()" class="text-stone-400 hover:text-stone-600 tap-effect p-1 ml-1">
+                            <i data-lucide="user-plus" class="w-4 h-4"></i>
+                        </button>
                     </div>
                 </div>
             </div>
-            <div class="flex items-center gap-2">
-                <button onclick="openShareModal()" id="btn-share-trip" class="w-9 h-9 rounded-full bg-blue-50 text-blue-500 flex items-center justify-center tap-effect">
-                    <i data-lucide="users" class="w-4 h-4"></i>
-                </button>
-                <div class="flex flex-col items-end gap-1">
-                     <div class="flex items-center gap-1 text-gray-600 bg-white px-2 py-1 rounded-full shadow-sm border border-stone-100">
-                        <i data-lucide="cloud" class="w-3 h-3 text-stone-400"></i>
-                        <span class="text-xs font-bold">22°</span>
-                    </div>
-                    <!-- 連線狀態燈 -->
-                    <div class="flex items-center gap-1 mt-1">
-                        <div id="status-dot" class="w-1.5 h-1.5 rounded-full bg-gray-300 transition-colors"></div>
-                        <span id="status-text" class="text-[9px] text-stone-400">Connecting...</span>
-                    </div>
+            <div class="text-right flex flex-col items-end gap-1">
+                 <div class="flex items-center gap-1 text-gray-600 bg-white px-2 py-1 rounded-full shadow-sm border border-stone-100">
+                    <i data-lucide="cloud" class="w-3 h-3 text-stone-400"></i>
+                    <span class="text-xs font-bold">22°</span>
+                </div>
+                <!-- 連線狀態燈 -->
+                <div class="flex items-center gap-1 mt-1">
+                    <div id="status-dot" class="w-1.5 h-1.5 rounded-full bg-gray-300 transition-colors"></div>
+                    <span id="status-text" class="text-[9px] text-stone-400">Connecting...</span>
                 </div>
             </div>
         </header>
@@ -383,7 +378,7 @@
         </div>
     </div>
 
-    <!-- Modals (詳細, 編輯, 行程設定, 新增行程, 共享, 加入) -->
+    <!-- Modals -->
     
     <!-- ADD TRIP MODAL -->
     <div id="add-trip-modal" class="fixed inset-0 bg-[#433D3C]/60 z-50 hidden flex items-center justify-center p-4 backdrop-blur-sm transition-opacity">
@@ -402,50 +397,37 @@
             <div class="flex gap-3 mt-6"><button onclick="closeAddTripModal()" class="flex-1 py-3 rounded-2xl bg-stone-100 text-stone-500 font-bold tap-effect">取消</button><button onclick="confirmAddTrip()" class="flex-1 py-3 rounded-2xl bg-[#433D3C] text-white font-bold tap-effect shadow-lg shadow-stone-300">建立</button></div>
         </div>
     </div>
-
-    <!-- SHARE MODAL -->
-    <div id="share-modal" class="fixed inset-0 bg-[#433D3C]/60 z-50 hidden flex items-center justify-center p-4 backdrop-blur-sm transition-opacity">
-        <div class="bg-[#FEFDF5] w-full max-w-sm rounded-[32px] p-6 shadow-2xl modal-enter relative">
-            <h3 class="text-xl font-bold mb-4 text-[#433D3C] flex items-center gap-2"><i data-lucide="share-2" class="w-5 h-5"></i> 邀請旅伴</h3>
+    
+    <!-- NEW: JOIN TRIP MODAL -->
+    <div id="join-modal" class="fixed inset-0 bg-[#433D3C]/60 z-50 hidden flex items-center justify-center p-4 backdrop-blur-sm transition-opacity">
+        <div class="bg-[#FEFDF5] w-full max-w-sm rounded-[32px] p-6 shadow-2xl modal-enter relative text-center">
+            <h3 class="text-xl font-bold mb-2 text-[#433D3C]">加入共用旅程</h3>
+            <p class="text-xs text-stone-400 mb-6">輸入朋友分享的 6 位數邀請碼</p>
             
-            <div id="share-info-box" class="bg-stone-100 p-4 rounded-2xl mb-4 text-sm text-stone-600">
-                <p class="mb-2 font-bold text-stone-700">公開連結分享</p>
-                <p class="mb-3 text-xs text-stone-500">任何人只要擁有此 ID 都可以加入並編輯此旅程。</p>
-                <div class="flex items-center gap-2 bg-white p-3 rounded-xl border border-stone-200">
-                    <span class="font-mono text-sm font-bold text-stone-700 flex-1 truncate select-all" id="share-trip-id">...</span>
-                    <button onclick="copyTripId()" class="text-blue-500 text-xs font-bold whitespace-nowrap px-2 py-1 rounded hover:bg-blue-50 transition-colors">複製 ID</button>
-                </div>
+            <input type="text" id="join-code-input" maxlength="6" class="w-full bg-stone-100 rounded-2xl p-4 text-center text-3xl font-mono font-bold tracking-[0.5em] border-2 border-transparent focus:border-[#433D3C] focus:outline-none uppercase mb-6" placeholder="A1B2C3">
+            
+            <div class="flex gap-3">
+                <button onclick="document.getElementById('join-modal').classList.add('hidden')" class="flex-1 py-3 rounded-2xl bg-stone-100 text-stone-500 font-bold tap-effect">取消</button>
+                <button onclick="confirmJoinTrip()" class="flex-1 py-3 rounded-2xl bg-[#433D3C] text-white font-bold tap-effect shadow-lg shadow-stone-300">加入</button>
             </div>
-
-            <div class="space-y-4">
-                <div class="space-y-1">
-                    <label class="text-xs text-stone-500 font-bold ml-1">新增成員 (Email 僅供顯示)</label>
-                    <div class="flex gap-2">
-                        <input type="email" id="share-email-input" class="flex-1 bg-white rounded-2xl p-3 text-sm font-medium border border-transparent focus:border-stone-200 focus:outline-none shadow-sm" placeholder="friend@gmail.com">
-                        <button onclick="addShareEmail()" class="bg-[#433D3C] text-white px-4 rounded-2xl font-bold text-sm tap-effect">加入</button>
-                    </div>
-                </div>
-                
-                <div class="space-y-2">
-                    <label class="text-xs text-stone-500 font-bold ml-1">目前的旅伴</label>
-                    <div id="share-list" class="space-y-2 max-h-32 overflow-y-auto pr-1">
-                        <!-- List -->
-                    </div>
-                </div>
-            </div>
-            <div class="flex gap-3 mt-6"><button onclick="closeShareModal()" class="w-full py-3 rounded-2xl bg-stone-200 text-stone-600 font-bold tap-effect hover:bg-stone-300 transition-colors">完成</button></div>
         </div>
     </div>
 
-    <!-- JOIN MODAL -->
-    <div id="join-modal" class="fixed inset-0 bg-[#433D3C]/60 z-50 hidden flex items-center justify-center p-4 backdrop-blur-sm transition-opacity">
-        <div class="bg-[#FEFDF5] w-full max-w-sm rounded-[32px] p-6 shadow-2xl modal-enter relative">
-            <h3 class="text-xl font-bold mb-6 text-[#433D3C]">加入旅程</h3>
-            <div class="space-y-4">
-                <p class="text-sm text-stone-500">請輸入主辦人提供的 <b>Trip ID</b> 即可加入。</p>
-                <div class="space-y-1"><label class="text-xs text-stone-500 font-bold ml-1">Trip ID</label><input type="text" id="join-trip-id" class="w-full bg-white rounded-2xl p-4 text-base font-mono font-bold border border-transparent focus:border-stone-200 focus:outline-none shadow-sm text-center" placeholder="trip_..."></div>
+    <!-- NEW: INVITE MODAL -->
+    <div id="invite-modal" class="fixed inset-0 bg-[#433D3C]/60 z-50 hidden flex items-center justify-center p-4 backdrop-blur-sm transition-opacity">
+        <div class="bg-[#FEFDF5] w-full max-w-sm rounded-[32px] p-6 shadow-2xl modal-enter relative text-center">
+            <div class="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4 text-green-600">
+                <i data-lucide="share-2" class="w-6 h-6"></i>
             </div>
-            <div class="flex gap-3 mt-6"><button onclick="closeJoinTripModal()" class="flex-1 py-3 rounded-2xl bg-stone-100 text-stone-500 font-bold tap-effect">取消</button><button onclick="confirmJoinTrip()" class="flex-1 py-3 rounded-2xl bg-[#433D3C] text-white font-bold tap-effect shadow-lg shadow-stone-300">加入</button></div>
+            <h3 class="text-xl font-bold mb-2 text-[#433D3C]">邀請旅伴</h3>
+            <p class="text-xs text-stone-400 mb-6">將此代碼分享給朋友，他們即可加入行程</p>
+            
+            <div id="invite-code-display" class="bg-stone-800 text-white rounded-2xl py-4 px-2 mb-2 cursor-pointer tap-effect">
+                <span class="text-3xl font-mono font-bold tracking-widest select-all">LOADING</span>
+            </div>
+            <p class="text-[10px] text-stone-400 mb-6">點擊代碼即可複製</p>
+            
+            <button onclick="document.getElementById('invite-modal').classList.add('hidden')" class="w-full py-3 rounded-2xl bg-stone-100 text-stone-500 font-bold tap-effect">關閉</button>
         </div>
     </div>
 
@@ -497,14 +479,10 @@
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js';
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js';
-        import { getFirestore, doc, setDoc, getDoc, onSnapshot, collection, query, where } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js';
+        import { getFirestore, doc, setDoc, onSnapshot, collection, getDoc } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js';
 
-        // 1. Setup Firebase (Smart Switcher)
-        let firebaseConfig;
-        let appId;
-        
-        // User's Config (For Export/Production)
-        const userConfig = {
+        // 1. Setup Firebase using environment config
+        const firebaseConfig = {
             apiKey: "AIzaSyDP1jX1u8TCI3TY8U3xfhEZbaMv9JLgJNw",
             authDomain: "mytaiwantrip-603c6.firebaseapp.com",
             projectId: "mytaiwantrip-603c6",
@@ -512,31 +490,20 @@
             messagingSenderId: "1063667328708",
             appId: "1:1063667328708:web:d2ae7acd304e589b790b91"
         };
-
-        // Determine Environment
-        if (typeof __firebase_config !== 'undefined') {
-            // Preview Mode: Use System Config to allow Guest Login & UI Testing
-            firebaseConfig = JSON.parse(__firebase_config);
-            appId = typeof __app_id !== 'undefined' ? __app_id : 'travel_app_v2';
-            document.getElementById('env-banner').style.display = 'block';
-        } else {
-            // Export/Production Mode: Use User Config to allow Google Login
-            firebaseConfig = userConfig;
-            appId = 'travel_app_v2';
-        }
-
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
         const provider = new GoogleAuthProvider();
         
+        // 2. Use __app_id for environment consistency
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'travel_app_v2';
         let currentUser = null;
         
         // Multi-Trip State
         window.currentTripId = null;
+        window.currentTripOwner = null; // NEW: Track who owns the current trip
         window.tripsList = [];
-        window.currentTripMetadata = null; // To store the currently open trip meta
-        let tripUnsubscribes = []; // To store listeners and detach them when switching trips
+        let tripUnsubscribes = []; 
 
         // UI Helpers
         const statusText = document.getElementById('status-text');
@@ -570,7 +537,6 @@
             lucide.createIcons();
         }
 
-        // Global function for creating toast
         window.showToast = function(message) {
             const toast = document.getElementById('toast-message');
             toast.innerText = message;
@@ -578,40 +544,27 @@
             setTimeout(() => toast.classList.remove('show'), 3000);
         }
 
-        // 3. Save Logic - Intelligent Switch based on isShared
+        // 3. Save Logic (Supports Shared Trips)
         window.saveToFirestore = async (type, data) => {
-            if (!currentUser) {
-                showToast("尚未連線，無法儲存");
-                return;
-            }
-            if (!window.currentTripId) {
-                console.warn("No trip selected, skipping save");
-                return;
-            }
-            
+            if (!currentUser) { showToast("尚未連線，無法儲存"); return; }
+            if (!window.currentTripId) return;
+
+            // KEY CHANGE: If I am a guest, save to the Owner's path
+            const targetUid = window.currentTripOwner || currentUser.uid;
+
             try {
                 showSyncing();
-                // Determine path based on Shared Status
-                let docRef;
-                const isShared = window.currentTripMetadata && window.currentTripMetadata.isShared;
-                
-                if (isShared) {
-                    // PUBLIC SHARED PATH
-                    docRef = doc(db, 'artifacts', appId, 'public', 'data', 'shared_trip_data', `${window.currentTripId}_${type}`);
-                } else {
-                    // PRIVATE USER PATH
-                    docRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'travel_data', `${window.currentTripId}_${type}`);
-                }
-                
+                const docName = `${window.currentTripId}_${type}`;
+                const docRef = doc(db, 'artifacts', appId, 'users', targetUid, 'travel_data', docName);
                 await setDoc(docRef, { items: data });
                 showSaved();
             } catch (e) { 
                 console.error("Sync error:", e); 
-                showError();
+                showError("權限不足或連線錯誤"); 
             }
         };
         
-        // Save Trip Index List (Always Private)
+        // Save Trip Index List (Always my own)
         window.saveTripsIndex = async (trips) => {
              if (!currentUser) return;
              try {
@@ -621,35 +574,17 @@
                 showSaved();
             } catch (e) { 
                 console.error("Sync error (Index):", e); 
-                showError();
-            }
-        }
-        
-        // Update Public Trip Metadata (Allowed Emails etc)
-        window.updatePublicTripMeta = async (tripId, meta) => {
-            try {
-                showSyncing();
-                const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'shared_trips', tripId);
-                await setDoc(docRef, meta, { merge: true }); // Merge to avoid overwriting other fields
-                showSaved();
-            } catch (e) {
-                console.error("Meta update error", e);
-                showError("更新設定失敗");
+                showError(); 
             }
         }
 
         // 4. Initialize Auth & Listeners
         async function initFirebase() {
             try {
-                // Try to sign in with environment token if available (only in Preview)
                 if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                    try {
-                        await signInWithCustomToken(auth, __initial_auth_token);
-                    } catch (tokenError) {
-                        // Fallback if token mismatch
-                    }
-                } 
-
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                }
+                
                 onAuthStateChanged(auth, async (user) => {
                     if (user) {
                         currentUser = user;
@@ -669,26 +604,22 @@
             }
         }
         
-        // Google Auth Functions
+        // Google Auth
         window.loginWithGoogle = async () => {
-            // Check if running in Preview Environment
-            if (typeof __firebase_config !== 'undefined') {
-                alert("⚠️ 預覽視窗限制：\nGoogle 登入在此預覽環境中受限。\n\n請點擊右上角的「Export」下載程式碼，在您自己的瀏覽器中執行即可正常使用您的 Google 帳號！");
-                return;
-            }
-
             try {
                 await signInWithPopup(auth, provider);
             } catch (error) {
                 console.error("Google login failed", error);
-                showToast("登入失敗: " + error.message);
+                if(error.code === 'auth/popup-blocked' || error.code === 'auth/operation-not-supported-in-this-environment') {
+                    alert("⚠️ 預覽視窗限制：\nGoogle 登入在此預覽環境中受限。\n\n請點擊右上角的「Export」下載程式碼，在您自己的瀏覽器中執行即可正常登入！");
+                } else {
+                    showToast("登入失敗: " + error.message);
+                }
             }
         }
         
         window.logoutGoogle = async () => {
-            if(confirm("確定要登出嗎？")) {
-                await signOut(auth);
-            }
+            if(confirm("確定要登出嗎？")) { await signOut(auth); }
         }
         
         function updateAuthUI(user) {
@@ -699,7 +630,7 @@
                     <div class="w-10 h-10 rounded-full bg-white border border-stone-200 shadow-sm flex items-center justify-center overflow-hidden transition-all group-hover:border-blue-300">
                         <i data-lucide="user" class="w-5 h-5 text-stone-400 group-hover:text-blue-500"></i>
                     </div>
-                    <span class="text-[10px] font-bold text-stone-400 group-hover:text-blue-500">登入備份</span>
+                    <span class="text-[10px] font-bold text-stone-400 group-hover:text-blue-500">登入</span>
                 </button>`;
             } else {
                 const photoURL = user.photoURL || '';
@@ -715,7 +646,7 @@
             lucide.createIcons();
         }
 
-        // 5. Load Trip List (Private Index)
+        // 5. Load Trip List
         function loadTripList(uid) {
             const indexRef = doc(db, 'artifacts', appId, 'users', uid, 'travel_data', 'trips_index');
             
@@ -729,23 +660,19 @@
             });
         }
 
-        // 6. Start Listeners for Specific Trip (Private or Public)
-        window.startTripListeners = function(tripId, isShared) {
-            // Unsubscribe previous listeners
+        // 6. Start Listeners for Specific Trip (Modified for Shared Trips)
+        window.startTripListeners = function(tripId) {
             tripUnsubscribes.forEach(unsub => unsub());
             tripUnsubscribes = [];
             
+            // KEY CHANGE: Listen to Owner's path if it exists
+            const targetUid = window.currentTripOwner || currentUser.uid;
+
             const types = ['schedule', 'expenses', 'companions'];
             
             types.forEach(type => {
-                let docRef;
-                if (isShared) {
-                    // Public Path
-                    docRef = doc(db, 'artifacts', appId, 'public', 'data', 'shared_trip_data', `${tripId}_${type}`);
-                } else {
-                    // Private Path
-                    docRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'travel_data', `${tripId}_${type}`);
-                }
+                const docName = `${tripId}_${type}`;
+                const docRef = doc(db, 'artifacts', appId, 'users', targetUid, 'travel_data', docName);
                 
                 const unsub = onSnapshot(docRef, (docSnap) => {
                     if (docSnap.exists()) {
@@ -764,238 +691,360 @@
                             window.renderFilter();
                         }
                     } else {
-                        // Fallback defaults
                         if(type === 'schedule') window.scheduleData = []; 
                         if(type === 'expenses') window.expenses = [];
                         if(type === 'companions') window.companions = ["我"];
                     }
                 }, (error) => {
                     console.error(`Read error (${type}):`, error);
-                    if(isShared && error.code === 'permission-denied') {
-                        alert("您沒有權限存取此旅程！");
-                        backToTripList();
+                    if(error.code === 'permission-denied') {
+                        showToast("您沒有權限查看此行程");
                     }
                 });
                 
                 tripUnsubscribes.push(unsub);
             });
         }
+        
+        // --- NEW INVITE/JOIN SYSTEM ---
+        
+        // 1. Open Invite Modal and Generate Code
+        window.openInviteModal = async function() {
+            document.getElementById('invite-modal').classList.remove('hidden');
+            const codeDisplay = document.querySelector('#invite-code-display span');
+            codeDisplay.innerText = "...";
 
-        // --- SHARED TRIP LOGIC ---
+            if (!window.currentTripId) return;
 
-        // 1. Convert Private Trip to Public (Share)
-        window.convertTripToShared = async (tripId) => {
-            if(!currentUser.email) {
-                window.showToast("請先登入 Google 帳號才能分享");
-                return null;
-            }
+            // Generate 6-char code
+            const code = Math.random().toString(36).substring(2, 8).toUpperCase();
             
-            const trip = window.tripsList.find(t => t.id === tripId);
-            if(!trip) return;
-            
+            // Save to public invites collection: artifacts/{appId}/public/data/invites/{code}
             try {
-                showSyncing();
+                // We use the 'invites' collection in public data
+                const inviteRef = doc(db, 'artifacts', appId, 'public', 'data', 'invites', code);
+                const trip = window.tripsList.find(t => t.id === window.currentTripId);
                 
-                // A. Copy Data from Private to Public
-                const types = ['schedule', 'expenses', 'companions'];
-                for(const type of types) {
-                    // Read Private
-                    const privRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'travel_data', `${tripId}_${type}`);
-                    const snap = await getDoc(privRef);
-                    if(snap.exists()) {
-                        const data = snap.data();
-                        // Write Public
-                        const pubRef = doc(db, 'artifacts', appId, 'public', 'data', 'shared_trip_data', `${tripId}_${type}`);
-                        await setDoc(pubRef, data);
-                    }
-                }
-                
-                // B. Create Public Metadata
-                const publicMeta = {
-                    id: tripId,
+                await setDoc(inviteRef, {
+                    tripId: window.currentTripId,
+                    ownerUid: currentUser.uid,
                     title: trip.title,
                     startDate: trip.startDate,
                     days: trip.days,
-                    ownerId: currentUser.uid,
-                    ownerEmail: currentUser.email,
-                    allowedEmails: [currentUser.email], // Auto allow self (still useful for display)
-                    createdAt: new Date().toISOString(),
-                    isShared: true
+                    createdAt: new Date().toISOString()
+                });
+                
+                codeDisplay.innerText = code;
+                
+                document.getElementById('invite-code-display').onclick = () => {
+                    navigator.clipboard.writeText(code);
+                    showToast("已複製代碼！");
                 };
-                const metaRef = doc(db, 'artifacts', appId, 'public', 'data', 'shared_trips', trip.id);
-                await setDoc(metaRef, publicMeta);
-                
-                // C. Update Local Index to mark as shared
-                trip.isShared = true;
-                trip.sharedRole = 'owner';
-                await window.saveTripsIndex(window.tripsList);
-                
-                showSaved();
-                return publicMeta;
                 
             } catch(e) {
-                console.error("Share conversion error", e);
-                showError("分享失敗");
-                return null;
+                console.error(e);
+                codeDisplay.innerText = "ERROR";
+                showToast("產生代碼失敗");
             }
         }
 
-        // 2. Join a Shared Trip
-        window.joinTrip = async (tripId) => {
-            if(!currentUser) {
-                window.showToast("請先登入 Google 帳號");
-                return;
-            }
+        // 2. Open Join Modal
+        window.openJoinModal = function() {
+            document.getElementById('join-modal').classList.remove('hidden');
+            document.getElementById('join-code-input').value = "";
+        }
+
+        // 3. Confirm Join
+        window.confirmJoinTrip = async function() {
+            const code = document.getElementById('join-code-input').value.trim().toUpperCase();
+            if(code.length !== 6) { showToast("請輸入 6 位數代碼"); return; }
             
-            // Check if already joined
-            if(window.tripsList.find(t => t.id === tripId)) {
-                window.showToast("您已經加入過此旅程了");
-                return;
-            }
+            showSyncing();
             
             try {
-                showSyncing();
-                // 1. Verify Trip Exists & Access
-                const metaRef = doc(db, 'artifacts', appId, 'public', 'data', 'shared_trips', tripId);
-                const metaSnap = await getDoc(metaRef);
+                const inviteRef = doc(db, 'artifacts', appId, 'public', 'data', 'invites', code);
+                const snap = await getDoc(inviteRef);
                 
-                if(!metaSnap.exists()) {
-                    showError("找不到此旅程 ID");
+                if (!snap.exists()) {
+                    showToast("無效的邀請碼");
+                    syncIndicator.classList.remove('show');
                     return;
                 }
                 
-                const meta = metaSnap.data();
+                const inviteData = snap.data();
                 
-                // 2. Access Check: Relaxed to "Anyone with link"
-                // We skip the strict email check here to allow easy sharing
+                if (inviteData.ownerUid === currentUser.uid) {
+                    showToast("這是您自己的旅程 XD");
+                    syncIndicator.classList.remove('show');
+                    return;
+                }
                 
-                // 3. Add to My Trips Index (Reference)
-                const newTripRef = {
-                    id: tripId,
-                    title: meta.title,
-                    startDate: meta.startDate,
-                    days: meta.days,
-                    isShared: true,
-                    sharedRole: 'member',
-                    ownerEmail: meta.ownerEmail
+                if (window.tripsList.some(t => t.id === inviteData.tripId)) {
+                    showToast("您已經加入過這個旅程了");
+                    syncIndicator.classList.remove('show');
+                    return;
+                }
+                
+                const newTripMeta = {
+                    id: inviteData.tripId,
+                    title: inviteData.title,
+                    startDate: inviteData.startDate,
+                    days: inviteData.days,
+                    ownerUid: inviteData.ownerUid, // Store Owner UID
+                    isShared: true
                 };
                 
-                window.tripsList.push(newTripRef);
+                window.tripsList.push(newTripMeta);
                 await window.saveTripsIndex(window.tripsList);
                 
+                // Auto-add myself to owner's companion list
+                try {
+                    const companionRef = doc(db, 'artifacts', appId, 'users', inviteData.ownerUid, 'travel_data', `${inviteData.tripId}_companions`);
+                    const cSnap = await getDoc(companionRef);
+                    if(cSnap.exists()) {
+                        let currentCompanions = cSnap.data().items || [];
+                        const myName = currentUser.displayName ? currentUser.displayName.split(' ')[0] : "旅伴";
+                        if(!currentCompanions.includes(myName)) {
+                            currentCompanions.push(myName);
+                            await setDoc(companionRef, { items: currentCompanions });
+                        }
+                    }
+                } catch(err) {
+                    console.log("Could not auto-add name, skipping");
+                }
+                
+                document.getElementById('join-modal').classList.add('hidden');
                 window.renderTripListUI();
-                closeJoinTripModal();
-                window.showToast("成功加入旅程！");
+                showSaved();
+                showToast("成功加入旅程！");
                 
             } catch(e) {
-                console.error("Join error", e);
+                console.error(e);
                 showError("加入失敗");
             }
         }
 
-        // --- Share Logic UI ---
-        const shareModal = document.getElementById('share-modal');
-        window.openShareModal = function() { 
-            const trip = window.currentTripMetadata;
-            if(!trip) return;
-            
-            // Update ID display
-            document.getElementById('share-trip-id').innerText = trip.id;
-            
-            // Render list (Mock for now, need to fetch from public meta if shared)
-            // We will just show basic UI first, actual fetching happens if already shared
-            renderShareList(trip);
-            
-            shareModal.classList.remove('hidden'); 
-        }
-        window.closeShareModal = function() { shareModal.classList.add('hidden'); }
+        initFirebase();
+    </script>
+
+    <script>
+        // --- 資料與參數 ---
+        const EXCHANGE_RATE = 0.24;
         
-        window.copyTripId = function() {
-            const id = document.getElementById('share-trip-id').innerText;
-            navigator.clipboard.writeText(id).then(() => window.showToast("已複製 ID"));
+        // 範本資料
+        window.templateScheduleData = [
+            { 
+                date: "27", month: "12", day: "Day 1", 
+                items: [
+                    { time: "08:00", endTime: "10:00", title: "抵達落機", type: "transport", location: "台灣桃園國際機場", note: "購買悠遊卡/SIM卡", description: "機場捷運直達車約35-40分鐘可抵達台北車站。記得在機場先換好台幣，或使用ATM提款。" },
+                    { time: "11:00", endTime: "12:00", title: "民宿擺行李", type: "stay", location: "台北", note: "寄放行李", description: "先將行李寄放，輕裝上陣開始行程。" },
+                    { time: "13:00", endTime: "14:30", title: "程味珍意麵滷味", type: "food", location: "程味珍意麵", tags: ["必吃滷味"], note: "40年老店", description: "西門町老字號，滷味非常入味，必點滷蘿蔔、大豆干和意麵。滷汁帶點甜味，非常開胃。" },
+                    { time: "15:00", endTime: "16:30", title: "西門町", type: "sight", location: "西門町", tags: ["逛街"], note: "年輕人集散地", description: "台北潮流中心，必逛唐吉訶德、萬年大樓。推薦小吃：阿宗麵線、天天利美食坊。" },
+                ] 
+            },
+            { 
+                date: "28", month: "12", day: "Day 2", 
+                items: [
+                    { time: "09:00", endTime: "10:00", title: "早餐", type: "food", location: "台北", note: "附近早餐店", description: "找間傳統豆漿店或蛋餅店開啟一天。" },
+                    { time: "12:00", endTime: "15:30", title: "九份十份", type: "sight", location: "九份老街", tags: ["山城", "燈籠"], note: "神隱少女場景", description: "建議先去十分瀑布和放天燈，傍晚再到九份老街看夜景。必吃：阿柑姨芋圓、阿蘭草仔粿。" },
+                ] 
+            },
+            { 
+                date: "29", month: "12", day: "Day 3", 
+                items: [
+                    { time: "11:00", endTime: "12:30", title: "犁園湯包館", type: "food", location: "犁園湯包館", tags: ["絲瓜湯包"], note: "平價鼎泰豐", description: "必點絲瓜蝦仁湯包，清爽鮮甜。羅勒鮮蚵湯包也很有特色，流沙包當甜點很棒。" },
+                    { time: "14:00", endTime: "15:00", title: "三創生活園區", type: "sight", location: "三創生活園區", tags: ["3C", "動漫"], note: "科技商場", description: "各樓層主題鮮明，動漫迷與3C控必逛。旁邊就是光華商場。" },
+                ] 
+            }
+        ];
+
+        // Global State
+        window.scheduleData = [];
+        window.currentDayIndex = 0;
+        window.expenses = [];
+        window.companions = ["我"];
+        window.currentFilter = 'ALL';
+
+        function init() {
+            lucide.createIcons();
+            generateHourlyWeather();
+            
+            document.getElementById('expense-amount').addEventListener('input', function(e) {
+                const val = parseInt(e.target.value) || 0;
+                document.getElementById('input-hkd-preview').innerText = Math.round(val * EXCHANGE_RATE);
+            });
+            
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('new-trip-date').value = today;
         }
         
-        async function renderShareList(trip) {
-            const listEl = document.getElementById('share-list');
-            listEl.innerHTML = '<p class="text-xs text-stone-400">載入中...</p>';
-            
-            let emails = [];
-            if (!trip.isShared) {
-                emails = [currentUser.email + ' (Owner)'];
+        // --- Multi-Trip Logic ---
+        
+        window.renderTripListUI = function() {
+            const container = document.getElementById('trip-list-container');
+            if (window.tripsList.length === 0) {
+                container.innerHTML = `
+                    <div class="flex flex-col items-center justify-center h-64 text-center mt-10">
+                        <div class="w-20 h-20 bg-stone-100 rounded-full flex items-center justify-center text-stone-300 mb-4">
+                            <i data-lucide="map" class="w-10 h-10"></i>
+                        </div>
+                        <h3 class="text-xl font-bold text-stone-600">還沒有旅程</h3>
+                        <p class="text-stone-400 text-sm mt-2">點擊右下角的 + 開始規劃吧！</p>
+                    </div>
+                `;
             } else {
-                // Fetch real allowed list
-                try {
-                    // Use global imports
-                    const metaRef = doc(db, 'artifacts', appId, 'public', 'data', 'shared_trips', trip.id);
-                    const snap = await getDoc(metaRef);
-                    if(snap.exists()) {
-                        emails = snap.data().allowedEmails || [];
-                    }
-                } catch(e) { console.error(e); }
+                container.innerHTML = window.tripsList.map((trip, idx) => {
+                    const days = trip.days || '?';
+                    const bgClass = `trip-card-bg-${idx % 4}`;
+                    // Identify if shared
+                    const isShared = trip.isShared || (trip.ownerUid && trip.ownerUid !== currentUser?.uid);
+                    
+                    return `
+                        <div onclick="openTrip('${trip.id}')" class="relative group w-full ${bgClass} rounded-[24px] p-6 shadow-lg transform transition-all tap-effect overflow-hidden cursor-pointer min-h-[140px] flex flex-col justify-between">
+                            <div class="absolute top-0 right-0 p-3 flex gap-2">
+                                ${isShared ? `<span class="bg-black/20 backdrop-blur-md text-white text-[10px] font-bold px-2 py-1 rounded-full flex items-center gap-1"><i data-lucide="users" class="w-3 h-3"></i>共用</span>` : ''}
+                                <button onclick="event.stopPropagation(); deleteTrip('${trip.id}')" class="w-8 h-8 bg-white/30 backdrop-blur-md rounded-full flex items-center justify-center text-white hover:bg-red-500 hover:text-white transition-colors opacity-0 group-hover:opacity-100">
+                                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+                            
+                            <div>
+                                <h3 class="text-2xl font-bold text-white mb-1 drop-shadow-sm leading-tight">${trip.title}</h3>
+                                <div class="flex items-center gap-2 text-white/90 text-xs font-bold bg-black/10 w-fit px-2 py-1 rounded-lg backdrop-blur-sm">
+                                    <i data-lucide="calendar" class="w-3 h-3"></i> ${trip.startDate}
+                                </div>
+                            </div>
+                            
+                            <div class="flex items-end justify-between mt-4">
+                                <div class="flex -space-x-2">
+                                     <div class="w-8 h-8 rounded-full bg-white/90 border-2 border-white flex items-center justify-center text-xs font-bold text-stone-500">${isShared ? 'G' : '我'}</div>
+                                </div>
+                                <span class="text-white font-bold text-4xl opacity-80">${days}<span class="text-sm ml-1">Days</span></span>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+            lucide.createIcons();
+        }
+        
+        window.openTrip = function(tripId) {
+            const trip = window.tripsList.find(t => t.id === tripId);
+            if (!trip) return;
+            
+            // 1. Set State
+            window.currentTripId = tripId;
+            // Set Owner for Shared Trips
+            window.currentTripOwner = trip.ownerUid || null; 
+
+            document.getElementById('header-title').innerText = trip.title;
+            
+            if(window.currentTripOwner && window.currentTripOwner !== currentUser?.uid) {
+                document.getElementById('header-subtitle').innerText = "SHARED TRIP";
+            } else {
+                document.getElementById('header-subtitle').innerText = "TRIP";
             }
             
-            listEl.innerHTML = emails.map(e => `
-                <div class="flex justify-between items-center bg-white p-2 rounded-lg border border-stone-100">
-                    <span class="text-xs font-bold text-stone-600">${e}</span>
-                    <span class="text-[10px] text-green-500 font-bold">已授權</span>
-                </div>
-            `).join('');
+            // 2. Start Listeners
+            window.startTripListeners(tripId);
+            
+            // 3. Switch View
+            document.getElementById('view-trip-list').classList.remove('page-active');
+            document.getElementById('view-trip-list').classList.add('page-hidden');
+            document.getElementById('view-trip-detail').classList.remove('page-hidden');
+            document.getElementById('view-trip-detail').classList.add('page-active');
         }
         
-        window.addShareEmail = async function() {
-            const email = document.getElementById('share-email-input').value.trim();
-            if(!email) return;
+        window.backToTripList = function() {
+            window.currentTripId = null;
+            window.currentTripOwner = null;
+            document.getElementById('view-trip-detail').classList.remove('page-active');
+            document.getElementById('view-trip-detail').classList.add('page-hidden');
+            document.getElementById('view-trip-list').classList.remove('page-hidden');
+            document.getElementById('view-trip-list').classList.add('page-active');
+        }
+        
+        // Add Trip Modal Logic
+        const addTripModal = document.getElementById('add-trip-modal');
+        window.openAddTripModal = function() { addTripModal.classList.remove('hidden'); }
+        window.closeAddTripModal = function() { addTripModal.classList.add('hidden'); }
+        
+        window.confirmAddTrip = async function() {
+            const title = document.getElementById('new-trip-title').value;
+            const startDate = document.getElementById('new-trip-date').value;
+            const days = parseInt(document.getElementById('new-trip-days').value);
+            const useTemplate = document.getElementById('use-template').checked;
             
-            const trip = window.currentTripMetadata;
+            if(!title || !startDate) return window.showToast("請填寫完整資訊");
             
-            try {
-                // 1. Check if needs conversion to Shared
-                if (!trip.isShared) {
-                    if(!confirm("確定要開啟共享模式嗎？資料將移至協作雲端。")) return;
-                    const meta = await window.convertTripToShared(trip.id);
-                    if(!meta) return;
-                    // Update local ref
-                    trip.isShared = true;
-                    window.currentTripMetadata = trip;
+            const newId = 'trip_' + Date.now();
+            const newTripMeta = {
+                id: newId,
+                title: title,
+                startDate: startDate,
+                days: days,
+                createdAt: new Date().toISOString()
+            };
+            
+            // 1. Prepare Initial Data
+            let initialSchedule = [];
+            const start = new Date(startDate);
+            
+            for(let i=0; i<days; i++) {
+                const dt = new Date(start);
+                dt.setDate(start.getDate()+i);
+                
+                let items = [];
+                if (useTemplate && window.templateScheduleData[i]) {
+                    items = window.templateScheduleData[i].items;
                 }
                 
-                // 2. Update Public Meta
-                // Use global imports
-                const metaRef = doc(db, 'artifacts', appId, 'public', 'data', 'shared_trips', trip.id);
-                const snap = await getDoc(metaRef);
-                if(snap.exists()) {
-                    let data = snap.data();
-                    let emails = data.allowedEmails || [];
-                    if(!emails.includes(email)) {
-                        emails.push(email);
-                        await setDoc(metaRef, { allowedEmails: emails }, { merge: true });
-                        document.getElementById('share-email-input').value = '';
-                        renderShareList(trip);
-                        window.showToast("已新增成員");
-                    } else {
-                        window.showToast("該成員已在名單中");
-                    }
-                }
-            } catch(e) {
-                console.error(e);
-                showError("新增失敗");
+                initialSchedule.push({
+                    date: dt.getDate(),
+                    month: dt.getMonth() + 1,
+                    day: `Day ${i+1}`,
+                    items: items
+                });
             }
-        }
+            
+            window.tripsList.push(newTripMeta);
+            window.renderTripListUI();
+            closeAddTripModal();
+            
+            await window.saveTripsIndex(window.tripsList);
+            
+            const prevId = window.currentTripId;
+            const prevOwner = window.currentTripOwner;
+            window.currentTripId = newId;
+            window.currentTripOwner = null; // I am owner
 
-        // --- Join Logic UI ---
-        const joinModal = document.getElementById('join-modal');
-        window.openJoinTripModal = function() { joinModal.classList.remove('hidden'); }
-        window.closeJoinTripModal = function() { joinModal.classList.add('hidden'); }
-        window.confirmJoinTrip = function() {
-            const id = document.getElementById('join-trip-id').value.trim();
-            if(id) window.joinTrip(id);
+            await window.saveToFirestore('schedule', initialSchedule);
+            await window.saveToFirestore('expenses', []);
+            await window.saveToFirestore('companions', ["我"]);
+            
+            window.currentTripId = prevId;
+            window.currentTripOwner = prevOwner;
+            
+            openTrip(newId);
+        }
+        
+        window.deleteTrip = async function(tripId) {
+            if(!confirm("確定要刪除這個旅程嗎？此操作無法復原。")) return;
+            window.tripsList = window.tripsList.filter(t => t.id !== tripId);
+            window.renderTripListUI();
+            await window.saveTripsIndex(window.tripsList);
         }
 
         // --- Core Logic (Existing) ---
         window.renderDaySelector = function() { 
             const c = document.getElementById('day-selector'); 
-            if (!window.scheduleData || window.scheduleData.length === 0) { c.innerHTML = ""; return; }
-            if (window.currentDayIndex >= window.scheduleData.length) { window.currentDayIndex = 0; }
+            if (!window.scheduleData || window.scheduleData.length === 0) {
+                 c.innerHTML = ""; return;
+            }
+            if (window.currentDayIndex >= window.scheduleData.length) {
+                window.currentDayIndex = 0;
+            }
+
             c.innerHTML = window.scheduleData.map((d, i) => `<button onclick="selectDay(${i})" class="day-btn flex-shrink-0 flex flex-col items-center justify-center w-[60px] h-[72px] rounded-2xl transition-all border border-transparent tap-effect ${i===window.currentDayIndex?'bg-[#433D3C] text-[#FEFDF5] shadow-lg shadow-stone-200':'bg-white text-stone-300'}"><span class="text-[10px] font-bold tracking-wide opacity-80">${d.day}</span><span class="text-xl font-bold font-mono mt-1">${d.month}/${d.date}</span></button>`).join(''); 
         }
         
@@ -1008,7 +1057,10 @@
         
         window.renderTimeline = function(i) { 
             const c = document.getElementById('timeline-container'); 
-            if (!window.scheduleData[i]) { c.innerHTML = `<div class="text-center text-stone-300 py-10">尚無行程</div>`; return; }
+            if (!window.scheduleData[i]) {
+                c.innerHTML = `<div class="text-center text-stone-300 py-10">尚無行程</div>`;
+                return;
+            }
             const d = window.scheduleData[i];
             if (!d.items) d.items = [];
             d.items.sort((a,b)=>a.time.localeCompare(b.time));
@@ -1090,10 +1142,7 @@
         // Date & Days
         const dateModal = document.getElementById('date-modal');
         window.openDateModal = function() { 
-            // Try to get start date from schedule (if exists), otherwise default
             let startDateVal = document.getElementById('new-trip-date').value;
-            // If we are inside a trip, we should load THAT trip's start date logic...
-            // For V3 prototype, we just default to today or existing first item
             document.getElementById('start-date-input').value = startDateVal; 
             document.getElementById('trip-days-input').value = window.scheduleData.length || 3; 
             dateModal.classList.remove('hidden'); 
@@ -1101,7 +1150,6 @@
         window.closeDateModal = function() { dateModal.classList.add('hidden'); }
         window.changeDays = function(delta) { let v = parseInt(document.getElementById('trip-days-input').value) + delta; if(v < 1) v = 1; document.getElementById('trip-days-input').value = v; }
         
-        // This function updates dates for CURRENT TRIP
         window.updateTravelDates = function() {
             const dStr = document.getElementById('start-date-input').value; const days = parseInt(document.getElementById('trip-days-input').value);
             if(!dStr) return window.showToast("請選擇日期");
@@ -1112,32 +1160,9 @@
             window.saveToFirestore('schedule', window.scheduleData); window.renderDaySelector(); window.renderTimeline(0); closeDateModal();
         }
 
-        // Reset
-        window.resetToDefault = function() { 
-            // V3: Disabled or modified behavior. Maybe delete trip?
-        }
         window.switchTab = function(tabId) { document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden')); document.getElementById(`view-${tabId}`).classList.remove('hidden'); ['schedule', 'info', 'budget'].forEach(id => { const btn = document.getElementById(`tab-${id}`); const span = btn.querySelector('span'); if(id === tabId) { btn.className = "active-tab flex items-center gap-2 px-5 py-3 tap-effect transition-all duration-300"; span.classList.remove('hidden'); } else { btn.className = "inactive-tab flex items-center gap-2 px-3 py-3 tap-effect transition-all duration-300"; span.classList.add('hidden'); } }); }
 
         function generateHourlyWeather() { const ws = [{i:'sun',t:22},{i:'cloud-sun',t:24},{i:'cloud',t:23},{i:'cloud-rain',t:20}]; let h=''; for(let i=6;i<=23;i++){ const m=ws[Math.floor(Math.random()*ws.length)]; h+=`<div class="weather-scroll-item flex flex-col items-center justify-center bg-stone-50 rounded-xl py-2 px-1 snap-start"><span class="text-[10px] text-stone-400 font-mono mb-1">${i}:00</span><i data-lucide="${m.i}" class="w-5 h-5 text-stone-600 mb-1"></i><span class="text-xs font-bold text-stone-800">${m.t}°</span></div>`; } document.getElementById('hourly-weather-container').innerHTML=h; }
-
-        function init() {
-            lucide.createIcons();
-            generateHourlyWeather();
-            
-            // Initial view state is handled by CSS (view-trip-list is active)
-            const expenseInput = document.getElementById('expense-amount');
-            if(expenseInput) {
-                expenseInput.addEventListener('input', function(e) {
-                    const val = parseInt(e.target.value) || 0;
-                    document.getElementById('input-hkd-preview').innerText = Math.round(val * EXCHANGE_RATE);
-                });
-            }
-            
-            // Set default date for new trip
-            const today = new Date().toISOString().split('T')[0];
-            const dateInput = document.getElementById('new-trip-date');
-            if(dateInput) dateInput.value = today;
-        }
 
         init();
         
