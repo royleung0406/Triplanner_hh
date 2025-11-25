@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>旅遊小幫手 v4.0 (Shared)</title>
+    <title>旅遊小幫手 v4.2 (Fixed)</title>
     
     <!-- PWA Settings -->
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -398,30 +398,31 @@
             <h3 class="text-xl font-bold mb-4 text-[#433D3C] flex items-center gap-2"><i data-lucide="share-2" class="w-5 h-5"></i> 邀請旅伴</h3>
             
             <div id="share-info-box" class="bg-stone-100 p-4 rounded-2xl mb-4 text-sm text-stone-600">
-                <p class="mb-2">將此旅程升級為<b>多人協作</b>模式，所有資料將同步到雲端。</p>
-                <div class="flex items-center gap-2 bg-white p-2 rounded-lg border border-stone-200">
-                    <span class="font-mono text-xs font-bold text-stone-400 select-all" id="share-trip-id">...</span>
-                    <button onclick="copyTripId()" class="text-blue-500 text-xs font-bold">複製 ID</button>
+                <p class="mb-2 font-bold text-stone-700">公開連結分享</p>
+                <p class="mb-3 text-xs text-stone-500">任何人只要擁有此 ID 都可以加入並編輯此旅程。</p>
+                <div class="flex items-center gap-2 bg-white p-3 rounded-xl border border-stone-200">
+                    <span class="font-mono text-sm font-bold text-stone-700 flex-1 truncate select-all" id="share-trip-id">...</span>
+                    <button onclick="copyTripId()" class="text-blue-500 text-xs font-bold whitespace-nowrap px-2 py-1 rounded hover:bg-blue-50 transition-colors">複製 ID</button>
                 </div>
             </div>
 
             <div class="space-y-4">
                 <div class="space-y-1">
-                    <label class="text-xs text-stone-500 font-bold ml-1">新增成員 (Google Email)</label>
+                    <label class="text-xs text-stone-500 font-bold ml-1">新增成員 (Email 僅供顯示)</label>
                     <div class="flex gap-2">
                         <input type="email" id="share-email-input" class="flex-1 bg-white rounded-2xl p-3 text-sm font-medium border border-transparent focus:border-stone-200 focus:outline-none shadow-sm" placeholder="friend@gmail.com">
-                        <button onclick="addShareEmail()" class="bg-[#433D3C] text-white px-4 rounded-2xl font-bold text-sm">加入</button>
+                        <button onclick="addShareEmail()" class="bg-[#433D3C] text-white px-4 rounded-2xl font-bold text-sm tap-effect">加入</button>
                     </div>
                 </div>
                 
                 <div class="space-y-2">
-                    <label class="text-xs text-stone-500 font-bold ml-1">已授權成員</label>
-                    <div id="share-list" class="space-y-2 max-h-32 overflow-y-auto">
+                    <label class="text-xs text-stone-500 font-bold ml-1">目前的旅伴</label>
+                    <div id="share-list" class="space-y-2 max-h-32 overflow-y-auto pr-1">
                         <!-- List -->
                     </div>
                 </div>
             </div>
-            <div class="flex gap-3 mt-6"><button onclick="closeShareModal()" class="w-full py-3 rounded-2xl bg-stone-200 text-stone-600 font-bold tap-effect">完成</button></div>
+            <div class="flex gap-3 mt-6"><button onclick="closeShareModal()" class="w-full py-3 rounded-2xl bg-stone-200 text-stone-600 font-bold tap-effect hover:bg-stone-300 transition-colors">完成</button></div>
         </div>
     </div>
 
@@ -430,7 +431,7 @@
         <div class="bg-[#FEFDF5] w-full max-w-sm rounded-[32px] p-6 shadow-2xl modal-enter relative">
             <h3 class="text-xl font-bold mb-6 text-[#433D3C]">加入旅程</h3>
             <div class="space-y-4">
-                <p class="text-sm text-stone-500">請輸入主辦人提供的 <b>Trip ID</b>。請確認您的 Email 已經被加入授權名單。</p>
+                <p class="text-sm text-stone-500">請輸入主辦人提供的 <b>Trip ID</b> 即可加入。</p>
                 <div class="space-y-1"><label class="text-xs text-stone-500 font-bold ml-1">Trip ID</label><input type="text" id="join-trip-id" class="w-full bg-white rounded-2xl p-4 text-base font-mono font-bold border border-transparent focus:border-stone-200 focus:outline-none shadow-sm text-center" placeholder="trip_..."></div>
             </div>
             <div class="flex gap-3 mt-6"><button onclick="closeJoinTripModal()" class="flex-1 py-3 rounded-2xl bg-stone-100 text-stone-500 font-bold tap-effect">取消</button><button onclick="confirmJoinTrip()" class="flex-1 py-3 rounded-2xl bg-[#433D3C] text-white font-bold tap-effect shadow-lg shadow-stone-300">加入</button></div>
@@ -790,7 +791,7 @@
                     days: trip.days,
                     ownerId: currentUser.uid,
                     ownerEmail: currentUser.email,
-                    allowedEmails: [currentUser.email], // Auto allow self
+                    allowedEmails: [currentUser.email], // Auto allow self (still useful for display)
                     createdAt: new Date().toISOString(),
                     isShared: true
                 };
@@ -814,7 +815,7 @@
 
         // 2. Join a Shared Trip
         window.joinTrip = async (tripId) => {
-            if(!currentUser.email) {
+            if(!currentUser) {
                 window.showToast("請先登入 Google 帳號");
                 return;
             }
@@ -838,12 +839,8 @@
                 
                 const meta = metaSnap.data();
                 
-                // 2. Check Email Authorization
-                if(!meta.allowedEmails || !meta.allowedEmails.includes(currentUser.email)) {
-                    alert("權限不足！\n您的 Email 尚未被列入此旅程的邀請名單。\n請聯絡主辦人加入：" + currentUser.email);
-                    showError("無權限");
-                    return;
-                }
+                // 2. Access Check: Relaxed to "Anyone with link"
+                // We skip the strict email check here to allow easy sharing
                 
                 // 3. Add to My Trips Index (Reference)
                 const newTripRef = {
@@ -867,223 +864,6 @@
                 console.error("Join error", e);
                 showError("加入失敗");
             }
-        }
-
-        initFirebase();
-    </script>
-
-    <script>
-        // --- 資料與參數 ---
-        const EXCHANGE_RATE = 0.24;
-        
-        // 範本資料
-        window.templateScheduleData = [
-            { 
-                date: "27", month: "12", day: "Day 1", 
-                items: [
-                    { time: "08:00", endTime: "10:00", title: "抵達落機", type: "transport", location: "台灣桃園國際機場", note: "購買悠遊卡/SIM卡", description: "機場捷運直達車約35-40分鐘可抵達台北車站。記得在機場先換好台幣，或使用ATM提款。" },
-                    { time: "11:00", endTime: "12:00", title: "民宿擺行李", type: "stay", location: "台北", note: "寄放行李", description: "先將行李寄放，輕裝上陣開始行程。" },
-                    { time: "13:00", endTime: "14:30", title: "程味珍意麵滷味", type: "food", location: "程味珍意麵", tags: ["必吃滷味"], note: "40年老店", description: "西門町老字號，滷味非常入味，必點滷蘿蔔、大豆干和意麵。滷汁帶點甜味，非常開胃。" },
-                    { time: "15:00", endTime: "16:30", title: "西門町", type: "sight", location: "西門町", tags: ["逛街"], note: "年輕人集散地", description: "台北潮流中心，必逛唐吉訶德、萬年大樓。推薦小吃：阿宗麵線、天天利美食坊。" },
-                ] 
-            },
-            { 
-                date: "28", month: "12", day: "Day 2", 
-                items: [
-                    { time: "09:00", endTime: "10:00", title: "早餐", type: "food", location: "台北", note: "附近早餐店", description: "找間傳統豆漿店或蛋餅店開啟一天。" },
-                    { time: "12:00", endTime: "15:30", title: "九份十份", type: "sight", location: "九份老街", tags: ["山城", "燈籠"], note: "神隱少女場景", description: "建議先去十分瀑布和放天燈，傍晚再到九份老街看夜景。必吃：阿柑姨芋圓、阿蘭草仔粿。" },
-                ] 
-            },
-            { 
-                date: "29", month: "12", day: "Day 3", 
-                items: [
-                    { time: "11:00", endTime: "12:30", title: "犁園湯包館", type: "food", location: "犁園湯包館", tags: ["絲瓜湯包"], note: "平價鼎泰豐", description: "必點絲瓜蝦仁湯包，清爽鮮甜。羅勒鮮蚵湯包也很有特色，流沙包當甜點很棒。" },
-                    { time: "14:00", endTime: "15:00", title: "三創生活園區", type: "sight", location: "三創生活園區", tags: ["3C", "動漫"], note: "科技商場", description: "各樓層主題鮮明，動漫迷與3C控必逛。旁邊就是光華商場。" },
-                ] 
-            }
-        ];
-
-        // Global State
-        window.scheduleData = [];
-        window.currentDayIndex = 0;
-        window.expenses = [];
-        window.companions = ["我"];
-        window.currentFilter = 'ALL';
-
-        function init() {
-            lucide.createIcons();
-            generateHourlyWeather();
-            
-            // Initial view state is handled by CSS (view-trip-list is active)
-            document.getElementById('expense-amount').addEventListener('input', function(e) {
-                const val = parseInt(e.target.value) || 0;
-                document.getElementById('input-hkd-preview').innerText = Math.round(val * EXCHANGE_RATE);
-            });
-            
-            // Set default date for new trip
-            const today = new Date().toISOString().split('T')[0];
-            document.getElementById('new-trip-date').value = today;
-        }
-        
-        // --- Multi-Trip Logic ---
-        
-        window.renderTripListUI = function() {
-            const container = document.getElementById('trip-list-container');
-            if (window.tripsList.length === 0) {
-                container.innerHTML = `
-                    <div class="flex flex-col items-center justify-center h-64 text-center mt-10">
-                        <div class="w-20 h-20 bg-stone-100 rounded-full flex items-center justify-center text-stone-300 mb-4">
-                            <i data-lucide="map" class="w-10 h-10"></i>
-                        </div>
-                        <h3 class="text-xl font-bold text-stone-600">還沒有旅程</h3>
-                        <p class="text-stone-400 text-sm mt-2">點擊右下角的 + 開始規劃吧！</p>
-                    </div>
-                `;
-            } else {
-                container.innerHTML = window.tripsList.map((trip, idx) => {
-                    const days = trip.days || '?';
-                    const isShared = trip.isShared;
-                    const role = trip.sharedRole === 'owner' ? 'Owner' : 'Member';
-                    
-                    // Random-ish gradient based on index
-                    const bgClass = `trip-card-bg-${idx % 4}`;
-                    return `
-                        <div onclick="openTrip('${trip.id}')" class="relative group w-full ${bgClass} rounded-[24px] p-6 shadow-lg transform transition-all tap-effect overflow-hidden cursor-pointer min-h-[140px] flex flex-col justify-between">
-                            <div class="absolute top-0 right-0 p-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                                <button onclick="event.stopPropagation(); deleteTrip('${trip.id}')" class="w-8 h-8 bg-white/30 backdrop-blur-md rounded-full flex items-center justify-center text-white hover:bg-red-500 hover:text-white transition-colors">
-                                    <i data-lucide="trash-2" class="w-4 h-4"></i>
-                                </button>
-                            </div>
-                            
-                            <div>
-                                <h3 class="text-2xl font-bold text-white mb-1 drop-shadow-sm leading-tight">${trip.title}</h3>
-                                <div class="flex items-center gap-2">
-                                    <div class="flex items-center gap-2 text-white/90 text-xs font-bold bg-black/10 w-fit px-2 py-1 rounded-lg backdrop-blur-sm">
-                                        <i data-lucide="calendar" class="w-3 h-3"></i> ${trip.startDate}
-                                    </div>
-                                    ${isShared ? `<div class="flex items-center gap-1 text-white/90 text-xs font-bold bg-blue-500/40 w-fit px-2 py-1 rounded-lg backdrop-blur-sm"><i data-lucide="users" class="w-3 h-3"></i> ${role}</div>` : ''}
-                                </div>
-                            </div>
-                            
-                            <div class="flex items-end justify-between mt-4">
-                                <div class="flex -space-x-2">
-                                     <div class="w-8 h-8 rounded-full bg-white/90 border-2 border-white flex items-center justify-center text-xs font-bold text-stone-500">我</div>
-                                </div>
-                                <span class="text-white font-bold text-4xl opacity-80">${days}<span class="text-sm ml-1">Days</span></span>
-                            </div>
-                        </div>
-                    `;
-                }).join('');
-            }
-            lucide.createIcons();
-        }
-        
-        window.openTrip = function(tripId) {
-            const trip = window.tripsList.find(t => t.id === tripId);
-            if (!trip) return;
-            
-            // 1. Set State
-            window.currentTripId = tripId;
-            window.currentTripMetadata = trip;
-            document.getElementById('header-title').innerText = trip.title;
-            
-            // Toggle Share Button Visibility
-            const btnShare = document.getElementById('btn-share-trip');
-            // We allow sharing if it's private OR if I am the owner of a shared trip
-            if (!trip.isShared || trip.sharedRole === 'owner') {
-                btnShare.classList.remove('hidden');
-            } else {
-                // Members can't invite others (simplification)
-                btnShare.classList.add('hidden');
-            }
-            
-            // 2. Start Listeners (Pass Shared Flag)
-            window.startTripListeners(tripId, trip.isShared);
-            
-            // 3. Switch View
-            document.getElementById('view-trip-list').classList.remove('page-active');
-            document.getElementById('view-trip-list').classList.add('page-hidden');
-            document.getElementById('view-trip-detail').classList.remove('page-hidden');
-            document.getElementById('view-trip-detail').classList.add('page-active');
-        }
-        
-        window.backToTripList = function() {
-            window.currentTripId = null;
-            window.currentTripMetadata = null;
-            // Stop listeners? Optionally, or just leave them until next switch.
-            
-            document.getElementById('view-trip-detail').classList.remove('page-active');
-            document.getElementById('view-trip-detail').classList.add('page-hidden');
-            document.getElementById('view-trip-list').classList.remove('page-hidden');
-            document.getElementById('view-trip-list').classList.add('page-active');
-        }
-        
-        // Add Trip Modal Logic
-        const addTripModal = document.getElementById('add-trip-modal');
-        window.openAddTripModal = function() { addTripModal.classList.remove('hidden'); }
-        window.closeAddTripModal = function() { addTripModal.classList.add('hidden'); }
-        
-        window.confirmAddTrip = async function() {
-            const title = document.getElementById('new-trip-title').value;
-            const startDate = document.getElementById('new-trip-date').value;
-            const days = parseInt(document.getElementById('new-trip-days').value);
-            const useTemplate = document.getElementById('use-template').checked;
-            
-            if(!title || !startDate) return window.showToast("請填寫完整資訊");
-            
-            const newId = 'trip_' + Date.now();
-            const newTripMeta = {
-                id: newId,
-                title: title,
-                startDate: startDate,
-                days: days,
-                createdAt: new Date().toISOString(),
-                isShared: false // Default private
-            };
-            
-            // 1. Prepare Initial Data
-            let initialSchedule = [];
-            const start = new Date(startDate);
-            
-            for(let i=0; i<days; i++) {
-                const dt = new Date(start);
-                dt.setDate(start.getDate()+i);
-                let items = [];
-                if (useTemplate && window.templateScheduleData[i]) {
-                    items = window.templateScheduleData[i].items;
-                }
-                initialSchedule.push({ date: dt.getDate(), month: dt.getMonth() + 1, day: `Day ${i+1}`, items: items });
-            }
-            
-            // 2. Update Local State & UI immediately
-            window.tripsList.push(newTripMeta);
-            window.renderTripListUI();
-            closeAddTripModal();
-            
-            // 3. Save Index
-            await window.saveTripsIndex(window.tripsList);
-            
-            // 4. Save Initial Data (Force Private Path)
-            // We temporarily mock window.currentTripMetadata to force private path save
-            window.currentTripId = newId;
-            window.currentTripMetadata = { isShared: false };
-            await window.saveToFirestore('schedule', initialSchedule);
-            await window.saveToFirestore('expenses', []);
-            await window.saveToFirestore('companions', ["我"]);
-            
-            // 5. Open it
-            openTrip(newId);
-        }
-        
-        window.deleteTrip = async function(tripId) {
-            if(!confirm("確定要刪除這個旅程嗎？此操作無法復原。")) return;
-            
-            // Filter out
-            window.tripsList = window.tripsList.filter(t => t.id !== tripId);
-            window.renderTripListUI();
-            
-            // Update Cloud Index
-            await window.saveTripsIndex(window.tripsList);
         }
 
         // --- Share Logic UI ---
@@ -1118,20 +898,7 @@
             } else {
                 // Fetch real allowed list
                 try {
-                    // Import doc/getDoc again or reuse scope vars if needed, but they are module scope
-                    // We need to import getDoc from firestore module in module scope
-                    // Assuming imports are available
-                    // We use the db initialized
-                    // Hack: Dynamic import or reuse
-                    // Actually we are in the same module scope.
-                    // Fetch Public Meta
-                    // We need getDoc here.
-                    // Oh, I imported getDoc at top. Good.
-                    
-                    // Dynamically import getDoc if not available? No it is available.
-                    // Need to define db/appId/doc in this scope? Yes available.
-                    
-                    const { doc, getDoc } = await import('https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js');
+                    // Use global imports
                     const metaRef = doc(db, 'artifacts', appId, 'public', 'data', 'shared_trips', trip.id);
                     const snap = await getDoc(metaRef);
                     if(snap.exists()) {
@@ -1166,8 +933,7 @@
                 }
                 
                 // 2. Update Public Meta
-                // We need to fetch current list first to append
-                const { doc, getDoc, setDoc } = await import('https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js');
+                // Use global imports
                 const metaRef = doc(db, 'artifacts', appId, 'public', 'data', 'shared_trips', trip.id);
                 const snap = await getDoc(metaRef);
                 if(snap.exists()) {
