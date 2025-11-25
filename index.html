@@ -4,48 +4,34 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>旅遊小幫手</title>
-    
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#FEFDF5">
-    
     <link rel="icon" type="image/png" href="icon.png">
     <link rel="apple-touch-icon" href="icon.png">
-    
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/lucide@latest"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700&family=Zen+Maru+Gothic:wght@400;500;700;900&display=swap" rel="stylesheet">
-
     <style>
-        :root { --bg-color: #FEFDF5; --text-main: #433D3C; }
+        :root { --bg-color: #FEFDF5; --text-main: #433D3C; --text-sub: #9CA3AF; }
         body { font-family: 'Zen Maru Gothic', 'Noto Sans TC', sans-serif; background-color: var(--bg-color); color: var(--text-main); -webkit-user-select: none; user-select: none; padding-bottom: env(safe-area-inset-bottom); }
         .no-scrollbar::-webkit-scrollbar { display: none; } .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
         .zen-shadow { box-shadow: 0 8px 24px rgba(149, 157, 165, 0.08); border: 1px solid rgba(255,255,255,0.8); }
         .tag-must-eat { background: #FFE4E6; color: #BE123C; } .tag-nav { background: #F3F4F6; color: #374151; } .tag-tips { background: #E0F2FE; color: #0369A1; }
         .active-tab { color: #57534E; font-weight: 700; background-color: #F5F5F4; border-radius: 16px; } .inactive-tab { color: #A8A29E; }
-        .tap-effect:active { opacity: 0.7; transform: scale(0.96); transition: transform 0.1s; }
+        .tap-effect:active { opacity: 0.8; transform: scale(0.98); transition: transform 0.1s; }
         @keyframes slide-up-spring { 0% { transform: translateY(100%); opacity: 0; } 60% { transform: translateY(-10px); opacity: 1; } 100% { transform: translateY(0); } }
         .modal-enter { animation: slide-up-spring 0.4s ease-out forwards; }
+        button, .card-clickable { touch-action: manipulation; cursor: pointer; }
         .share-btn-selected { background-color: #433D3C; color: #FFFFFF; border-color: #433D3C; }
         .share-btn-unselected { background-color: #F5F5F4; color: #A8A29E; border-color: transparent; }
-        
-        /* 載入指示器 */
-        #sync-indicator {
-            position: fixed; top: 10px; left: 50%; transform: translateX(-50%);
-            background: rgba(67, 61, 60, 0.9); color: white; padding: 6px 16px; border-radius: 20px;
-            font-size: 11px; font-weight: bold; z-index: 9999; backdrop-filter: blur(4px);
-            display: flex; align-items: center; gap: 6px; transition: opacity 0.3s, transform 0.3s;
-            opacity: 0; pointer-events: none;
-        }
+        .filter-btn-active { background-color: rgba(255,255,255,0.2); color: white; font-weight: bold; border: 1px solid rgba(255,255,255,0.4); }
+        .filter-btn-inactive { color: rgba(255,255,255,0.6); }
+        .weather-scroll-item { min-width: 60px; }
+        #sync-indicator { position: fixed; top: 10px; left: 50%; transform: translateX(-50%); background: rgba(67, 61, 60, 0.9); color: white; padding: 6px 16px; border-radius: 20px; font-size: 11px; font-weight: bold; z-index: 9999; backdrop-filter: blur(4px); display: flex; align-items: center; gap: 6px; transition: opacity 0.3s, transform 0.3s; opacity: 0; pointer-events: none; }
         #sync-indicator.show { opacity: 1; transform: translateX(-50%) translateY(0); }
-        #sync-indicator.error { background: rgba(239, 68, 68, 0.95); }
-        #sync-indicator.success { background: rgba(34, 197, 94, 0.95); }
-        
-        /* 鎖定畫面 */
         #lock-screen, #access-denied-screen { position: fixed; inset: 0; background: #FEFDF5; z-index: 9990; display: none; flex-direction: column; justify-content: center; align-items: center; padding: 20px; }
         #lock-screen.active, #access-denied-screen.active { display: flex; }
-        
-        /* 用戶選單 */
         #user-menu { position: absolute; top: 60px; right: 20px; background: white; border-radius: 16px; padding: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); z-index: 50; display: none; flex-direction: column; gap: 4px; border: 1px solid #eee; min-width: 180px; }
         #user-menu.show { display: flex; }
         #user-avatar.logged-in { border: 2px solid #433D3C; }
@@ -55,118 +41,74 @@
 
     <div id="sync-indicator"><i id="sync-icon" data-lucide="refresh-cw" class="w-3 h-3 animate-spin"></i><span id="sync-msg">同步中...</span></div>
 
-    <!-- VIEW 0: 首頁 -->
+    <!-- VIEW 0: 首頁 (旅程列表) -->
     <div id="view-home" class="h-full flex flex-col p-6 animate-fade-in relative">
         <header class="mb-8 pt-safe-top flex justify-between items-end">
             <div><p class="text-xs text-stone-400 font-bold tracking-widest mb-1">TRAVEL LOG</p><h1 class="text-3xl font-black tracking-wide text-[#433D3C]">我的旅程</h1></div>
             <div class="relative">
-                <button onclick="toggleUserMenu()" id="user-avatar" class="w-10 h-10 rounded-full bg-stone-200 flex items-center justify-center overflow-hidden tap-effect shadow-md border-2 border-white">
-                    <i id="user-icon-default" data-lucide="user" class="w-5 h-5 text-stone-500"></i><img id="user-img" src="" class="w-full h-full object-cover hidden">
-                </button>
-                <div id="user-menu"><div id="user-info" class="px-4 py-3 text-xs text-stone-400 border-b border-stone-100 mb-1 hidden">未登入</div><button onclick="handleLogin()" id="btn-login" class="px-4 py-3 text-sm font-bold text-stone-700 hover:bg-stone-50 rounded-xl text-left flex items-center gap-3 transition-colors"><div class="w-6 h-6 rounded-full bg-white border border-stone-200 flex items-center justify-center"><i data-lucide="log-in" class="w-3 h-3"></i></div>Google 登入</button><button onclick="handleLogout()" id="btn-logout" class="px-4 py-3 text-sm font-bold text-red-500 hover:bg-red-50 rounded-xl text-left flex items-center gap-3 hidden transition-colors"><div class="w-6 h-6 rounded-full bg-white border border-stone-200 flex items-center justify-center"><i data-lucide="log-out" class="w-3 h-3"></i></div>登出</button></div>
+                <button onclick="toggleUserMenu()" id="user-avatar" class="w-10 h-10 rounded-full bg-stone-200 flex items-center justify-center overflow-hidden tap-effect shadow-md border-2 border-white"><i id="user-icon-default" data-lucide="user" class="w-5 h-5 text-stone-500"></i><img id="user-img" src="" class="w-full h-full object-cover hidden"></button>
+                <div id="user-menu">
+                    <div id="user-info" class="px-4 py-3 text-xs text-stone-400 border-b border-stone-100 mb-1 hidden">未登入</div>
+                    <button onclick="handleLogin()" id="btn-login" class="px-4 py-3 text-sm font-bold text-stone-700 hover:bg-stone-50 rounded-xl text-left flex items-center gap-3 transition-colors"><div class="w-6 h-6 rounded-full bg-white border border-stone-200 flex items-center justify-center"><i data-lucide="log-in" class="w-3 h-3"></i></div>Google 登入</button>
+                    <button onclick="handleLogout()" id="btn-logout" class="px-4 py-3 text-sm font-bold text-red-500 hover:bg-red-50 rounded-xl text-left flex items-center gap-3 hidden transition-colors"><div class="w-6 h-6 rounded-full bg-white border border-stone-200 flex items-center justify-center"><i data-lucide="log-out" class="w-3 h-3"></i></div>登出</button>
+                </div>
             </div>
         </header>
-        <div id="trip-list-container" class="flex-1 overflow-y-auto no-scrollbar space-y-4 pb-24">
-            <div class="text-center text-stone-400 mt-20"><i data-lucide="loader-2" class="w-8 h-8 animate-spin mx-auto mb-2"></i><p>載入旅程中...</p></div>
-        </div>
+        <div id="trip-list-container" class="flex-1 overflow-y-auto no-scrollbar space-y-4 pb-24"><div class="text-center text-stone-400 mt-20"><i data-lucide="loader-2" class="w-8 h-8 animate-spin mx-auto mb-2"></i><p>載入旅程中...</p></div></div>
         <button onclick="createNewTrip()" class="absolute bottom-8 right-6 bg-[#433D3C] text-white w-14 h-14 rounded-full flex items-center justify-center shadow-xl tap-effect z-10"><i data-lucide="plus" class="w-8 h-8"></i></button>
     </div>
 
-    <!-- 鎖定畫面 -->
+    <!-- 鎖定/權限畫面 -->
     <div id="lock-screen"><div class="w-16 h-16 rounded-full bg-stone-100 flex items-center justify-center mb-6 text-stone-400"><i data-lucide="lock" class="w-8 h-8"></i></div><h2 class="text-2xl font-bold text-[#433D3C] mb-2">此旅程受保護</h2><p class="text-sm text-stone-400 mb-6 text-center">請輸入通行碼</p><div class="flex gap-2 mb-6"><input type="text" id="access-code-input" maxlength="4" class="w-32 bg-white text-center text-2xl font-bold tracking-[0.5em] py-3 rounded-2xl border-2 border-stone-100 focus:border-[#433D3C] outline-none" placeholder="••••"></div><button onclick="verifyAccessCode()" class="w-full max-w-xs py-3 rounded-2xl bg-[#433D3C] text-white font-bold tap-effect shadow-lg">解鎖</button><button onclick="backToHome()" class="mt-4 text-sm text-stone-400 underline">返回首頁</button></div>
-
-    <!-- 無權限畫面 -->
-    <div id="access-denied-screen">
-        <div class="w-16 h-16 rounded-full bg-red-50 flex items-center justify-center mb-6 text-red-400"><i data-lucide="shield-alert" class="w-8 h-8"></i></div>
-        <h2 class="text-2xl font-bold text-[#433D3C] mb-2">無權訪問</h2><p class="text-sm text-stone-400 mb-6 text-center px-6">您不在邀請名單內。</p>
-        <div class="bg-stone-50 px-4 py-2 rounded-lg mb-6 border border-stone-200 text-center"><p class="text-xs text-stone-500 font-mono mb-1">目前登入：</p><p class="text-xs font-bold text-[#433D3C]" id="current-user-email-display">未登入</p></div>
-        <button onclick="claimOwnership()" id="claim-btn" class="w-full max-w-xs py-3 rounded-2xl bg-green-600 text-white font-bold tap-effect shadow-lg mb-3 hidden">👑 認領此行程</button>
-        <button onclick="handleLogin()" class="w-full max-w-xs py-3 rounded-2xl bg-[#433D3C] text-white font-bold tap-effect shadow-lg mb-3">切換帳號</button>
-        <button onclick="backToHome()" class="text-sm text-stone-400 underline">返回首頁</button>
-    </div>
+    <div id="access-denied-screen"><div class="w-16 h-16 rounded-full bg-red-50 flex items-center justify-center mb-6 text-red-400"><i data-lucide="shield-alert" class="w-8 h-8"></i></div><h2 class="text-2xl font-bold text-[#433D3C] mb-2">無權訪問</h2><p class="text-sm text-stone-400 mb-6 text-center px-6">您不在邀請名單內。</p><div class="bg-stone-50 px-4 py-2 rounded-lg mb-6 border border-stone-200 text-center"><p class="text-xs text-stone-500 font-mono mb-1">目前登入：</p><p class="text-xs font-bold text-[#433D3C]" id="current-user-email-display">未登入</p></div><button onclick="claimOwnership()" id="claim-btn" class="w-full max-w-xs py-3 rounded-2xl bg-green-600 text-white font-bold tap-effect shadow-lg mb-3 hidden">👑 認領此行程</button><button onclick="handleLogin()" class="w-full max-w-xs py-3 rounded-2xl bg-[#433D3C] text-white font-bold tap-effect shadow-lg mb-3">切換帳號</button><button onclick="backToHome()" class="text-sm text-stone-400 underline">返回首頁</button></div>
 
     <!-- VIEW 1: 行程詳情 -->
     <div id="view-app" class="h-full flex flex-col hidden">
         <header class="bg-[#FEFDF5]/90 backdrop-blur-sm pt-safe-top sticky top-0 z-20 px-6 py-4 flex justify-between items-end border-b border-stone-100/50">
             <div class="flex items-center gap-3">
                 <button onclick="backToHome()" class="bg-white w-8 h-8 rounded-full flex items-center justify-center shadow-sm text-stone-400 hover:text-stone-600 tap-effect"><i data-lucide="chevron-left" class="w-5 h-5"></i></button>
-                <div class="flex-1 min-w-0">
-                    <p class="text-[10px] text-gray-400 tracking-widest mb-0.5 font-bold">CURRENT TRIP</p>
-                    <div class="flex items-center gap-2">
-                        <h1 class="text-xl font-bold tracking-wide text-[#433D3C] truncate" id="header-trip-title">旅程標題</h1>
-                        <button onclick="openSecurityModal()" class="text-stone-300 hover:text-stone-500 tap-effect p-1 flex-shrink-0"><i id="header-lock-icon" data-lucide="unlock" class="w-4 h-4"></i></button>
-                    </div>
-                </div>
+                <div class="flex-1 min-w-0"><p class="text-[10px] text-gray-400 tracking-widest mb-0.5 font-bold">CURRENT TRIP</p><div class="flex items-center gap-2"><h1 class="text-xl font-bold tracking-wide text-[#433D3C] truncate" id="header-trip-title">旅程標題</h1><button onclick="openSecurityModal()" class="text-stone-300 hover:text-stone-500 tap-effect p-1 flex-shrink-0"><i id="header-lock-icon" data-lucide="unlock" class="w-4 h-4"></i></button></div></div>
             </div>
             <div class="text-right flex flex-col items-end gap-2">
                 <div class="flex gap-2 items-center">
                     <button onclick="openDateModal()" class="text-stone-400 hover:text-stone-600 tap-effect p-1.5 bg-white rounded-full shadow-sm"><i data-lucide="settings-2" class="w-4 h-4"></i></button>
-                    <!-- 新版邀請按鈕：綁定 openShareModal -->
-                    <button onclick="openShareModal()" class="bg-[#433D3C] text-white pl-3 pr-4 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 tap-effect shadow-md border border-transparent hover:bg-stone-700 transition-colors">
-                        <i data-lucide="user-plus" class="w-3 h-3"></i> 邀請
-                    </button>
+                    <!-- 邀請按鈕 (已修復) -->
+                    <button onclick="window.openShareModal()" class="bg-[#433D3C] text-white px-4 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 tap-effect shadow-md border border-transparent hover:bg-stone-700 transition-colors"><i data-lucide="user-plus" class="w-3 h-3"></i><span>邀請</span></button>
                 </div>
-                 <div class="flex items-center gap-1 text-gray-600 bg-white px-2 py-1 rounded-lg shadow-sm border border-stone-100">
-                    <i data-lucide="thermometer" class="w-3 h-3 text-stone-400"></i><span class="text-xs font-bold" id="header-temp">--°C</span>
-                </div>
+                 <div class="flex items-center gap-1 text-gray-600 bg-white px-2 py-1 rounded-lg shadow-sm border border-stone-100"><i data-lucide="thermometer" class="w-3 h-3 text-stone-400"></i><span class="text-xs font-bold" id="header-temp">--°C</span></div>
             </div>
         </header>
 
         <main id="main-content" class="flex-1 overflow-y-auto no-scrollbar pb-28 relative px-4">
-            <!-- Tab 1: 行程 -->
             <div id="view-schedule" class="view-section pt-2 space-y-6 animate-fade-in">
                 <div class="flex gap-3 overflow-x-auto no-scrollbar pb-2 px-1" id="day-selector"></div>
-                <!-- 天氣模組 -->
                 <div class="bg-white rounded-[24px] p-4 zen-shadow border border-white overflow-hidden">
-                    <div class="flex items-center gap-2 mb-3 px-1">
-                        <i data-lucide="cloud-sun" class="w-4 h-4 text-blue-400"></i>
-                        <span class="text-xs font-bold text-stone-500" id="weather-title">天氣預報</span>
-                    </div>
-                    <div class="flex overflow-x-auto no-scrollbar gap-2" id="hourly-weather-container">
-                         <div class="w-full text-center text-stone-300 py-4 text-xs">載入真實天氣中...</div>
-                    </div>
+                    <div class="flex items-center gap-2 mb-3 px-1"><i data-lucide="cloud-sun" class="w-4 h-4 text-blue-400"></i><span class="text-xs font-bold text-stone-500" id="weather-title">天氣預報</span></div>
+                    <div class="flex overflow-x-auto no-scrollbar gap-2" id="hourly-weather-container"><div class="w-full text-center text-stone-300 py-4 text-xs">載入真實天氣...</div></div>
                 </div>
                 <div id="timeline-container" class="space-y-4 pb-10"></div>
             </div>
-
-            <!-- Tab 2: 資訊 -->
             <div id="view-info" class="view-section hidden pt-4 space-y-6 animate-fade-in">
                 <div class="bg-white rounded-[24px] p-6 zen-shadow">
                     <h3 class="text-lg font-bold text-gray-800 mb-5 flex items-center gap-2"><div class="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center text-blue-500"><i data-lucide="plane-takeoff" class="w-4 h-4"></i></div>航班資訊</h3>
                     <div class="space-y-6" id="flight-info-placeholder"><div class="p-4 bg-stone-50 rounded-xl text-center text-stone-400 text-sm">可在這裡加入航班資訊功能 (待開發)</div></div>
                 </div>
             </div>
-
-            <!-- Tab 3: 記帳 -->
             <div id="view-budget" class="view-section hidden pt-4 space-y-6 animate-fade-in">
                 <div class="bg-[#2D2A26] rounded-[24px] p-6 text-white zen-shadow relative overflow-hidden">
                     <div class="absolute -right-4 -top-4 w-24 h-24 bg-white/5 rounded-full blur-2xl"></div>
-                    <div class="flex justify-between items-start mb-4">
-                        <p class="text-stone-400 text-xs font-medium tracking-wide uppercase" id="budget-title">總消費 (ALL)</p>
-                        <button onclick="promptAddCompanion()" class="bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-full text-[10px] flex items-center gap-1 backdrop-blur-sm transition-colors"><i data-lucide="users" class="w-3 h-3"></i> 管理旅伴</button>
-                    </div>
-                    <div class="mb-6">
-                        <div class="flex items-baseline gap-2"><span class="text-lg text-stone-400 font-bold">NT$</span><h2 class="text-5xl font-bold tracking-tighter font-mono" id="total-expense-twd">0</h2></div>
-                        <p class="text-stone-400 text-sm mt-1 font-medium flex items-center gap-1"><span class="bg-white/10 px-2 py-0.5 rounded text-xs">約 HK$ <span id="total-expense-hkd" class="font-mono">0</span></span></p>
-                    </div>
+                    <div class="flex justify-between items-start mb-4"><p class="text-stone-400 text-xs font-medium tracking-wide uppercase" id="budget-title">總消費 (ALL)</p><button onclick="promptAddCompanion()" class="bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-full text-[10px] flex items-center gap-1 backdrop-blur-sm transition-colors"><i data-lucide="users" class="w-3 h-3"></i> 管理旅伴</button></div>
+                    <div class="mb-6"><div class="flex items-baseline gap-2"><span class="text-lg text-stone-400 font-bold">NT$</span><h2 class="text-5xl font-bold tracking-tighter font-mono" id="total-expense-twd">0</h2></div><p class="text-stone-400 text-sm mt-1 font-medium flex items-center gap-1"><span class="bg-white/10 px-2 py-0.5 rounded text-xs">約 HK$ <span id="total-expense-hkd" class="font-mono">0</span></span></p></div>
                     <div class="flex gap-2 overflow-x-auto no-scrollbar pb-1" id="member-filter-container"></div>
                 </div>
                 <div class="bg-white p-5 rounded-[24px] zen-shadow space-y-5 relative overflow-hidden">
-                    <div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-stone-200 to-white"></div>
                     <h3 class="text-stone-800 font-bold text-lg flex items-center gap-2"><div class="w-8 h-8 rounded-full bg-stone-100 flex items-center justify-center text-stone-600"><i data-lucide="receipt" class="w-4 h-4"></i></div> 記一筆</h3>
-                    <div class="bg-stone-50 rounded-2xl px-5 py-4 flex flex-col border border-transparent focus-within:border-[#433D3C] transition-all shadow-inner relative group">
-                        <label class="text-[10px] text-stone-400 font-bold mb-1 uppercase">金額 (TWD)</label>
-                        <div class="flex items-baseline"><span class="text-stone-400 text-2xl mr-2 font-bold">$</span><input type="number" id="expense-amount" placeholder="0" class="flex-1 bg-transparent text-4xl focus:outline-none text-stone-800 font-mono font-bold placeholder-stone-200"></div>
-                        <div class="absolute right-4 top-1/2 -translate-y-1/2 text-stone-300 font-mono text-sm pointer-events-none group-focus-within:text-stone-400 transition-colors">≈ HK$ <span id="input-hkd-preview">0</span></div>
-                    </div>
+                    <div class="bg-stone-50 rounded-2xl px-5 py-4 flex flex-col border border-transparent focus-within:border-[#433D3C] transition-all shadow-inner relative group"><label class="text-[10px] text-stone-400 font-bold mb-1 uppercase">金額 (TWD)</label><div class="flex items-baseline"><span class="text-stone-400 text-2xl mr-2 font-bold">$</span><input type="number" id="expense-amount" placeholder="0" class="flex-1 bg-transparent text-4xl focus:outline-none text-stone-800 font-mono font-bold placeholder-stone-200"></div><div class="absolute right-4 top-1/2 -translate-y-1/2 text-stone-300 font-mono text-sm pointer-events-none group-focus-within:text-stone-400 transition-colors">≈ HK$ <span id="input-hkd-preview">0</span></div></div>
                     <div class="bg-stone-50 rounded-2xl px-4 py-3 flex items-center gap-2 border border-transparent focus-within:border-stone-200 transition-colors"><input type="text" id="expense-item" placeholder="消費項目" class="flex-1 bg-transparent text-base focus:outline-none text-stone-700 placeholder-stone-400 font-medium"></div>
                     <div class="grid grid-cols-1 gap-3 bg-stone-50 p-4 rounded-2xl">
                         <div class="flex items-center justify-between"><span class="text-xs text-stone-500 font-bold flex items-center gap-1"><i data-lucide="wallet" class="w-3 h-3"></i> 誰先付錢？</span><select id="expense-payer" class="bg-white text-stone-700 text-sm font-bold px-3 py-1.5 rounded-lg border-none focus:ring-0 outline-none cursor-pointer shadow-sm"></select></div>
                         <div class="h-px bg-stone-200/50 w-full"></div>
-                        <div class="space-y-2">
-                            <div class="flex justify-between items-center"><span class="text-xs text-stone-500 font-bold flex items-center gap-1"><i data-lucide="users" class="w-3 h-3"></i> 誰要分攤？</span><button type="button" onclick="selectAllShares()" class="text-[10px] bg-blue-50 text-blue-500 font-bold px-2 py-1 rounded hover:bg-blue-100 transition-colors">全選</button></div>
-                            <div id="share-buttons-container" class="flex flex-wrap gap-2"></div>
-                        </div>
+                        <div class="space-y-2"><div class="flex justify-between items-center"><span class="text-xs text-stone-500 font-bold flex items-center gap-1"><i data-lucide="users" class="w-3 h-3"></i> 誰要分攤？</span><button type="button" onclick="selectAllShares()" class="text-[10px] bg-blue-50 text-blue-500 font-bold px-2 py-1 rounded hover:bg-blue-100 transition-colors">全選</button></div><div id="share-buttons-container" class="flex flex-wrap gap-2"></div></div>
                     </div>
                     <button onclick="addExpense()" class="w-full bg-[#433D3C] text-white py-4 rounded-2xl flex items-center justify-center gap-2 tap-effect shadow-lg shadow-stone-200 font-bold text-lg active:scale-[0.98] transition-transform"><i data-lucide="plus" class="w-5 h-5"></i> 加入記帳</button>
                 </div>
@@ -174,17 +116,7 @@
                 <div id="expense-list" class="space-y-3 pb-10 min-h-[100px]"></div>
             </div>
         </main>
-
-        <!-- 底部導航 -->
-        <div class="fixed bottom-6 left-6 right-6 z-30">
-            <nav class="bg-white/90 backdrop-blur-xl rounded-[24px] shadow-[0_8px_32px_rgba(0,0,0,0.08)] p-2 border border-white/50">
-                <div class="flex justify-around items-center">
-                    <button onclick="switchTab('schedule')" id="tab-schedule" class="active-tab flex items-center gap-2 px-4 py-3 tap-effect transition-all duration-300"><i data-lucide="map" class="w-5 h-5"></i><span class="text-xs font-bold">行程</span></button>
-                    <button onclick="switchTab('info')" id="tab-info" class="inactive-tab flex items-center gap-2 px-4 py-3 tap-effect transition-all duration-300"><i data-lucide="sparkles" class="w-5 h-5"></i><span class="text-xs font-bold hidden">資訊</span></button>
-                    <button onclick="switchTab('budget')" id="tab-budget" class="inactive-tab flex items-center gap-2 px-4 py-3 tap-effect transition-all duration-300"><i data-lucide="wallet" class="w-5 h-5"></i><span class="text-xs font-bold hidden">記帳</span></button>
-                </div>
-            </nav>
-        </div>
+        <div class="fixed bottom-6 left-6 right-6 z-30"><nav class="bg-white/90 backdrop-blur-xl rounded-[24px] shadow-[0_8px_32px_rgba(0,0,0,0.08)] p-2 border border-white/50"><div class="flex justify-around items-center"><button onclick="switchTab('schedule')" id="tab-schedule" class="active-tab flex items-center gap-2 px-4 py-3 tap-effect transition-all duration-300"><i data-lucide="map" class="w-5 h-5"></i><span class="text-xs font-bold">行程</span></button><button onclick="switchTab('info')" id="tab-info" class="inactive-tab flex items-center gap-2 px-4 py-3 tap-effect transition-all duration-300"><i data-lucide="sparkles" class="w-5 h-5"></i><span class="text-xs font-bold hidden">資訊</span></button><button onclick="switchTab('budget')" id="tab-budget" class="inactive-tab flex items-center gap-2 px-4 py-3 tap-effect transition-all duration-300"><i data-lucide="wallet" class="w-5 h-5"></i><span class="text-xs font-bold hidden">記帳</span></button></div></nav></div>
     </div>
 
     <!-- Modals -->
@@ -197,16 +129,15 @@
             <div class="flex gap-2"><button onclick="copyShareLink()" class="flex-1 py-3 rounded-xl bg-stone-100 text-stone-600 font-bold tap-effect flex items-center justify-center gap-2"><i data-lucide="link" class="w-4 h-4"></i> 複製連結</button><button onclick="shareViaGmail()" class="flex-1 py-3 rounded-xl bg-blue-50 text-blue-600 font-bold tap-effect flex items-center justify-center gap-2"><i data-lucide="mail" class="w-4 h-4"></i> Gmail</button></div>
         </div>
     </div>
-    
+    <div id="security-modal" class="fixed inset-0 bg-[#433D3C]/60 z-50 hidden flex items-center justify-center p-4 backdrop-blur-sm transition-opacity"><div class="bg-[#FEFDF5] w-full max-w-sm rounded-[32px] p-6 shadow-2xl modal-enter relative text-center"><h3 class="text-lg font-bold mb-2 text-[#433D3C]">密碼保護</h3><p class="text-xs text-stone-400 mb-6">設定備用通行碼 (給未登入者使用)</p><div class="mb-6"><input type="text" id="set-access-code" maxlength="4" class="w-full bg-white rounded-2xl p-4 text-2xl font-bold border border-transparent focus:border-stone-200 focus:outline-none shadow-sm text-center tracking-[0.5em]" placeholder="••••"></div><div class="flex gap-3"><button onclick="closeSecurityModal()" class="flex-1 py-3 rounded-2xl bg-stone-100 text-stone-500 font-bold tap-effect">取消</button><button onclick="saveAccessCode()" class="flex-1 py-3 rounded-2xl bg-[#433D3C] text-white font-bold tap-effect shadow-lg shadow-stone-300">儲存</button></div></div></div>
     <div id="detail-modal" class="fixed inset-0 bg-[#433D3C]/60 z-50 hidden flex items-end sm:items-center justify-center p-4 backdrop-blur-sm transition-opacity"><div class="bg-[#FEFDF5] w-full max-w-md rounded-[32px] p-6 shadow-2xl modal-enter relative max-h-[85vh] overflow-y-auto no-scrollbar"><div class="w-12 h-1.5 bg-stone-200 rounded-full mx-auto mb-6"></div><div id="detail-content" class="space-y-5"></div><button onclick="closeDetailModal()" class="absolute top-6 right-6 w-8 h-8 rounded-full bg-stone-100 flex items-center justify-center text-stone-400 hover:text-stone-600 tap-effect"><i data-lucide="x" class="w-5 h-5"></i></button></div></div>
     <div id="edit-modal" class="fixed inset-0 bg-[#433D3C]/60 z-50 hidden flex items-end sm:items-center justify-center p-4 backdrop-blur-sm transition-opacity"><div class="bg-[#FEFDF5] w-full max-w-md rounded-[32px] p-6 shadow-2xl modal-enter relative max-h-[90vh] overflow-y-auto no-scrollbar"><h3 class="text-xl font-bold mb-6 flex justify-between items-center text-[#433D3C]"><span id="modal-title">編輯行程</span><button onclick="closeEditModal()" class="w-8 h-8 rounded-full bg-stone-100 flex items-center justify-center text-stone-400 hover:text-stone-600 tap-effect"><i data-lucide="x" class="w-5 h-5"></i></button></h3><form id="edit-form" class="space-y-4" onsubmit="saveScheduleItem(event)"><input type="hidden" id="edit-day-index"><input type="hidden" id="edit-item-index"><div class="grid grid-cols-2 gap-3"><div class="space-y-1"><label class="text-xs text-stone-500 font-bold ml-1">開始時間</label><input type="time" id="edit-time" class="w-full bg-white rounded-2xl p-4 text-sm font-medium border border-transparent focus:border-stone-200 focus:outline-none shadow-sm text-center"></div><div class="space-y-1"><label class="text-xs text-stone-500 font-bold ml-1">結束時間</label><input type="time" id="edit-end-time" class="w-full bg-white rounded-2xl p-4 text-sm font-medium border border-transparent focus:border-stone-200 focus:outline-none shadow-sm text-center text-stone-500 placeholder-stone-300"></div></div><div class="space-y-1"><label class="text-xs text-stone-500 font-bold ml-1">類型</label><select id="edit-type" class="w-full bg-white rounded-2xl p-4 text-sm font-medium border border-transparent focus:border-stone-200 focus:outline-none shadow-sm appearance-none"><option value="sight">📷 景點</option><option value="food">🍜 美食</option><option value="shop">🛍️ 購物</option><option value="transport">🚌 交通</option><option value="stay">🛏️ 住宿</option></select></div><div class="space-y-1"><label class="text-xs text-stone-500 font-bold ml-1">標題</label><input type="text" id="edit-title" required class="w-full bg-white rounded-2xl p-4 text-sm font-bold border border-transparent focus:border-stone-200 focus:outline-none shadow-sm" placeholder="行程名稱"></div><div class="space-y-1"><label class="text-xs text-stone-500 font-bold ml-1">地點</label><div class="relative"><i data-lucide="map-pin" class="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400"></i><input type="text" id="edit-location" class="w-full bg-white rounded-2xl p-4 pl-10 text-sm font-medium border border-transparent focus:border-stone-200 focus:outline-none shadow-sm" placeholder="輸入地點關鍵字"></div></div><div class="space-y-1"><label class="text-xs text-stone-500 font-bold ml-1">標籤</label><input type="text" id="edit-tags" class="w-full bg-white rounded-2xl p-4 text-sm font-medium border border-transparent focus:border-stone-200 focus:outline-none shadow-sm" placeholder="例如: 必吃, 推薦"></div><div class="space-y-1"><label class="text-xs text-stone-500 font-bold ml-1">簡短備註</label><input type="text" id="edit-note" class="w-full bg-white rounded-2xl p-4 text-sm font-medium border border-transparent focus:border-stone-200 focus:outline-none shadow-sm" placeholder="顯示在卡片上的短句"></div><div class="space-y-1"><label class="text-xs text-stone-500 font-bold ml-1">詳細介紹</label><textarea id="edit-description" rows="4" class="w-full bg-white rounded-2xl p-4 text-sm font-medium border border-transparent focus:border-stone-200 focus:outline-none shadow-sm resize-none" placeholder="這裡輸入的內容會同步到詳細頁面..."></textarea></div><div class="pt-4"><button type="submit" class="w-full py-4 rounded-2xl bg-[#433D3C] text-[#FEFDF5] font-bold shadow-lg shadow-stone-300 tap-effect">儲存變更</button></div></form></div></div>
     <div id="date-modal" class="fixed inset-0 bg-[#433D3C]/60 z-50 hidden flex items-center justify-center p-4 backdrop-blur-sm transition-opacity"><div class="bg-[#FEFDF5] w-full max-w-sm rounded-[32px] p-6 shadow-2xl modal-enter relative"><h3 class="text-lg font-bold mb-6 text-[#433D3C] text-center">行程設定</h3><div class="space-y-4"><div><label class="text-xs text-stone-500 font-bold ml-1 block mb-2">旅程標題</label><input type="text" id="trip-name-input" class="w-full bg-white rounded-2xl p-4 text-lg font-medium border border-transparent focus:border-stone-200 focus:outline-none shadow-sm text-center text-[#433D3C]"></div><div><label class="text-xs text-stone-500 font-bold ml-1 block mb-2">出發日期</label><input type="date" id="start-date-input" class="w-full bg-white rounded-2xl p-4 text-lg font-medium border border-transparent focus:border-stone-200 focus:outline-none shadow-sm text-center text-[#433D3C]"></div><div><label class="text-xs text-stone-500 font-bold ml-1 block mb-2">旅行總天數</label><div class="flex items-center gap-3 bg-white rounded-2xl p-2 shadow-sm"><button onclick="changeDays(-1)" class="w-10 h-10 rounded-xl bg-stone-100 text-stone-600 flex items-center justify-center font-bold text-xl tap-effect">-</button><input type="number" id="trip-days-input" readonly class="flex-1 text-center text-xl font-bold bg-transparent border-none focus:ring-0 text-[#433D3C]" value="5"><button onclick="changeDays(1)" class="w-10 h-10 rounded-xl bg-stone-100 text-stone-600 flex items-center justify-center font-bold text-xl tap-effect">+</button></div></div></div><p class="text-[10px] text-red-400 text-center mt-6 mb-2">* 減少天數將會刪除多餘日期的行程</p><div class="flex gap-3"><button onclick="closeDateModal()" class="flex-1 py-3 rounded-2xl bg-stone-100 text-stone-500 font-bold tap-effect">取消</button><button onclick="updateTripSettings()" class="flex-1 py-3 rounded-2xl bg-[#433D3C] text-white font-bold tap-effect shadow-lg shadow-stone-300">確認更新</button></div><hr class="border-stone-200 my-4"><button onclick="deleteCurrentTrip()" class="w-full py-3 rounded-2xl bg-red-50 text-red-500 font-bold tap-effect flex items-center justify-center gap-2"><i data-lucide="trash-2" class="w-4 h-4"></i> 刪除此旅程</button></div></div>
-    <div id="security-modal" class="fixed inset-0 bg-[#433D3C]/60 z-50 hidden flex items-center justify-center p-4 backdrop-blur-sm transition-opacity"><div class="bg-[#FEFDF5] w-full max-w-sm rounded-[32px] p-6 shadow-2xl modal-enter relative text-center"><h3 class="text-lg font-bold mb-2 text-[#433D3C]">密碼保護</h3><p class="text-xs text-stone-400 mb-6">設定備用通行碼 (給未登入者使用)</p><div class="mb-6"><input type="text" id="set-access-code" maxlength="4" class="w-full bg-white rounded-2xl p-4 text-2xl font-bold border border-transparent focus:border-stone-200 focus:outline-none shadow-sm text-center tracking-[0.5em]" placeholder="••••"></div><div class="flex gap-3"><button onclick="closeSecurityModal()" class="flex-1 py-3 rounded-2xl bg-stone-100 text-stone-500 font-bold tap-effect">取消</button><button onclick="saveAccessCode()" class="flex-1 py-3 rounded-2xl bg-[#433D3C] text-white font-bold tap-effect shadow-lg shadow-stone-300">儲存</button></div></div></div>
 
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js';
         import { getAuth, signInAnonymously, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js';
-        import { getFirestore, doc, setDoc, onSnapshot, deleteDoc, getDoc, updateDoc, arrayUnion } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js';
+        import { getFirestore, doc, setDoc, onSnapshot, deleteDoc, getDoc, updateDoc, arrayUnion, arrayRemove } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js';
 
         const firebaseConfig = { apiKey: "AIzaSyDP1jX1u8TCI3TY8U3xfhEZbaMv9JLgJNw", authDomain: "mytaiwantrip-603c6.firebaseapp.com", projectId: "mytaiwantrip-603c6", storageBucket: "mytaiwantrip-603c6.firebasestorage.app", messagingSenderId: "1063667328708", appId: "1:1063667328708:web:d2ae7acd304e589b790b91" };
         const app = initializeApp(firebaseConfig); const auth = getAuth(app); const db = getFirestore(app); const provider = new GoogleAuthProvider();
@@ -277,7 +208,24 @@
             document.getElementById('share-modal').classList.remove('hidden');
         };
         window.closeShareModal = () => document.getElementById('share-modal').classList.add('hidden');
-
+        window.copyShareLink = function() {
+            const url = window.location.origin + window.location.pathname + '?id=' + window.currentTripId;
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(url).then(() => alert("連結已複製"));
+            } else { prompt("請複製連結：", url); }
+        }
+        window.shareViaGmail = function() {
+            const url = window.location.origin + window.location.pathname + '?id=' + window.currentTripId;
+            const tripName = window.tripMeta.name || "旅遊行程";
+            const subject = encodeURIComponent(`[邀請] 一起來規劃 ${tripName} 吧！`);
+            let bodyText = `Hi,\n\n我正在使用旅遊小幫手規劃 ${tripName}，邀請你一起加入編輯！\n\n🔗 行程連結：\n${url}`;
+            if(window.tripMeta.accessCode) bodyText += `\n\n🔑 通行碼：${window.tripMeta.accessCode}`;
+            const body = encodeURIComponent(bodyText);
+            window.open(`https://mail.google.com/mail/?view=cm&fs=1&su=${subject}&body=${body}`, '_blank');
+            window.closeShareModal();
+        }
+        
+        // (Rest of logic for dashboard, create, delete, expenses, etc.)
         window.renderDashboard = async () => {
             if(tripIdFromUrl) return;
             const container = document.getElementById('trip-list-container');
@@ -296,57 +244,89 @@
             container.innerHTML = html; lucide.createIcons();
         };
         window.createNewTrip = async () => { const name = prompt("請輸入新旅程名稱:"); if(!name) return; const newId = 'trip_' + Date.now().toString(36); const today = new Date().toISOString().split('T')[0]; const initialEmails = (auth.currentUser && !auth.currentUser.isAnonymous) ? [auth.currentUser.email] : []; const ownerId = auth.currentUser ? auth.currentUser.uid : null; await window.saveTripMetadata(newId, name, today, 3, null, initialEmails, ownerId); const initialSchedule = Array(3).fill().map((_, i) => ({ date: "", month: "", day: `Day ${i+1}`, items: [] })); await window.saveTripData(newId, 'schedule', initialSchedule); await window.saveTripData(newId, 'expenses', []); await window.saveTripData(newId, 'companions', ["我"]); window.loadTrip(newId); };
+        window.deleteCurrentTrip = async function() { if(!confirm("確定刪除？")) return; window.myTrips = window.myTrips.filter(id => id !== window.currentTripId); localStorage.setItem('my_trips', JSON.stringify(window.myTrips)); window.closeDateModal(); window.backToHome(); };
+        const securityModal = document.getElementById('security-modal');
+        window.openSecurityModal = function() { if(!window.isOwner) return alert("權限不足"); document.getElementById('set-access-code').value = window.tripMeta.accessCode || ''; securityModal.classList.remove('hidden'); }
+        window.closeSecurityModal = function() { securityModal.classList.add('hidden'); }
+        window.saveAccessCode = async function() { const c = document.getElementById('set-access-code').value; await window.saveTripMetadata(window.currentTripId, window.tripMeta.name, window.tripMeta.date, window.tripMeta.days, c || null, window.tripMeta.allowedEmails); window.closeSecurityModal(); alert("設定已更新"); };
+    </script>
+
+    <script>
+        // --- UI Logic ---
+        const EXCHANGE_RATE = 0.24;
+        const WEATHER_ICONS = { 0: 'sun', 1: 'cloud-sun', 2: 'cloud-sun', 3: 'cloud', 45: 'cloud-fog', 48: 'cloud-fog', 51: 'cloud-drizzle', 53: 'cloud-drizzle', 55: 'cloud-drizzle', 61: 'cloud-rain', 63: 'cloud-rain', 65: 'cloud-rain', 71: 'snowflake', 73: 'snowflake', 75: 'snowflake', 80: 'cloud-rain-wind', 81: 'cloud-rain-wind', 82: 'cloud-rain-wind', 95: 'cloud-lightning', 96: 'cloud-lightning', 99: 'cloud-lightning' };
+        window.defaultScheduleData = [];
+        window.scheduleData = []; window.currentDayIndex = 0; window.expenses = []; window.companions = ["我"]; window.currentFilter = 'ALL';
+
+        function init() {
+            lucide.createIcons();
+            document.getElementById('expense-amount').addEventListener('input', function(e) {
+                const val = parseInt(e.target.value) || 0;
+                document.getElementById('input-hkd-preview').innerText = Math.round(val * EXCHANGE_RATE);
+            });
+        }
+
+        window.backToHome = function() {
+            const newUrl = window.location.origin + window.location.pathname;
+            window.history.pushState({path:newUrl},'',newUrl);
+            document.getElementById('view-app').classList.add('hidden');
+            document.getElementById('view-home').classList.remove('hidden');
+            document.getElementById('lock-screen').classList.remove('active');
+            document.getElementById('access-denied-screen').classList.remove('active');
+            window.currentTripId = null;
+            window.renderDashboard();
+        };
         
+        // Fetch Weather Logic (Real Data)
         async function fetchWeather(dayObj) {
             const container = document.getElementById('hourly-weather-container');
             const title = document.getElementById('weather-title');
-            if (!dayObj) return;
-            
-            // Construct Date
-            let targetDate = new Date();
-            // Trying to parse YYYY, MM, DD from dayObj which likely only has MM/DD
-            // Fallback: Use current year for forecast, but if trip is future, this is tricky.
-            // Open-Meteo only gives 7-14 days. If date is far, we can't get real hourly data.
-            // Logic: If date is within next 10 days, fetch specific date. Else fetch "Current" weather as reference or show unavailable.
+            if (!dayObj || !dayObj.month || !dayObj.date) {
+                container.innerHTML = '<div class="w-full text-center text-stone-300 py-4 text-xs">日期未設定</div>';
+                return;
+            }
             
             const year = new Date().getFullYear();
-            const tripDateStr = `${year}-${dayObj.month.padStart(2,'0')}-${dayObj.date.padStart(2,'0')}`;
-            
+            const m = dayObj.month.toString().padStart(2, '0');
+            const d = dayObj.date.toString().padStart(2, '0');
+            const tripDateStr = `${year}-${m}-${d}`;
             const tripDate = new Date(tripDateStr);
             const today = new Date();
             const diffTime = tripDate - today;
             const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
-
-            // 台北座標
+            
+            // Taipei
             const lat = 25.0330, lon = 121.5654;
             let apiUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=temperature_2m,weather_code&timezone=auto`;
 
-            // 如果日期在未來 14 天內，抓該日期的資料
-            if (diffDays >= 0 && diffDays <= 12) {
+            if (diffDays >= -1 && diffDays <= 6) {
                  apiUrl += `&start_date=${tripDateStr}&end_date=${tripDateStr}`;
                  title.innerText = `預報 (${dayObj.month}/${dayObj.date})`;
             } else {
-                // 超出範圍，顯示警告，不顯示假數據
-                container.innerHTML = '<div class="w-full text-center text-stone-300 py-4 text-xs">超出預報範圍 (僅提供 14 天內數據)</div>';
-                return;
+                // Out of range (too far in future or past)
+                // Fallback to generic "current" weather but label it clearly
+                title.innerText = `台北即時天氣 (行程較遠)`;
+                apiUrl = `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&hourly=temperature_2m,weather_code&timezone=auto&forecast_days=1`;
             }
 
             try {
                 const response = await fetch(apiUrl);
                 const data = await response.json();
 
-                // Header temp is current temp, only update if today
-                if (diffDays === 0 && data.hourly) {
-                    const currentHour = new Date().getHours();
-                    const t = Math.round(data.hourly.temperature_2m[currentHour]);
-                    document.getElementById('header-temp').innerText = `${t}°C`;
+                // Update header temp (Current temp)
+                // We use the first hour data for simplicity or current hour if today
+                if (data.hourly) {
+                     const currentHour = new Date().getHours();
+                     const t = Math.round(data.hourly.temperature_2m[currentHour] || data.hourly.temperature_2m[0]);
+                     document.getElementById('header-temp').innerText = `${t}°C`;
                 }
 
                 let html = '';
+                if(!data.hourly) throw new Error("No data");
+
                 data.hourly.time.forEach((timeStr, index) => {
                     const date = new Date(timeStr);
                     const hour = date.getHours();
-                    // 顯示早上6點到晚上11點
                     if (hour >= 6 && hour <= 23) {
                         const temp = Math.round(data.hourly.temperature_2m[index]);
                         const code = data.hourly.weather_code[index];
@@ -361,6 +341,11 @@
                 container.innerHTML = '<div class="w-full text-center text-stone-300 py-4 text-xs">暫時無法取得天氣</div>';
             }
         }
+
+        init();
+        const style = document.createElement('style');
+        style.innerHTML = `@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } } @keyframes slide-up { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } } .animate-fade-in { animation: fade-in 0.4s ease-out; } .animate-slide-up { animation: slide-up 0.5s cubic-bezier(0.16, 1, 0.3, 1); }`;
+        document.head.appendChild(style);
     </script>
 </body>
 </html>
