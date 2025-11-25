@@ -73,22 +73,32 @@
         /* 載入中遮罩 */
         #sync-indicator {
             position: fixed; top: 10px; left: 50%; transform: translateX(-50%);
-            background: rgba(67, 61, 60, 0.8); color: white;
-            padding: 4px 12px; border-radius: 20px; font-size: 10px;
+            background: rgba(67, 61, 60, 0.9); color: white;
+            padding: 6px 16px; border-radius: 20px; font-size: 11px; font-weight: bold;
             z-index: 9999; backdrop-filter: blur(4px);
             display: flex; align-items: center; gap: 6px;
-            transition: opacity 0.5s, transform 0.5s;
+            transition: opacity 0.3s, transform 0.3s;
             opacity: 0; pointer-events: none;
         }
         #sync-indicator.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+        #sync-indicator.error { background: rgba(239, 68, 68, 0.95); }
+        #sync-indicator.success { background: rgba(34, 197, 94, 0.95); }
+
+        /* 鎖定畫面 */
+        #lock-screen {
+            position: fixed; inset: 0; background: #FEFDF5; z-index: 9990;
+            display: none; flex-direction: column; justify-content: center; align-items: center;
+            padding: 20px;
+        }
+        #lock-screen.active { display: flex; }
     </style>
 </head>
 <body class="h-screen flex flex-col overflow-hidden bg-[#FEFDF5]">
 
     <!-- 同步提示 -->
     <div id="sync-indicator">
-        <i data-lucide="refresh-cw" class="w-3 h-3 animate-spin"></i>
-        <span>雲端同步中...</span>
+        <i id="sync-icon" data-lucide="refresh-cw" class="w-3 h-3 animate-spin"></i>
+        <span id="sync-msg">同步中...</span>
     </div>
 
     <!-- VIEW 0: 旅程列表 (首頁) -->
@@ -112,6 +122,20 @@
         </div>
     </div>
 
+    <!-- 鎖定畫面 (需要密碼時顯示) -->
+    <div id="lock-screen">
+        <div class="w-16 h-16 rounded-full bg-stone-100 flex items-center justify-center mb-6 text-stone-400">
+            <i data-lucide="lock" class="w-8 h-8"></i>
+        </div>
+        <h2 class="text-2xl font-bold text-[#433D3C] mb-2">此旅程受保護</h2>
+        <p class="text-sm text-stone-400 mb-6 text-center">請輸入通行碼以解鎖行程</p>
+        <div class="flex gap-2 mb-6">
+            <input type="text" id="access-code-input" maxlength="4" class="w-32 bg-white text-center text-2xl font-bold tracking-[0.5em] py-3 rounded-2xl border-2 border-stone-100 focus:border-[#433D3C] outline-none" placeholder="••••">
+        </div>
+        <button onclick="verifyAccessCode()" class="w-full max-w-xs py-3 rounded-2xl bg-[#433D3C] text-white font-bold tap-effect shadow-lg">解鎖</button>
+        <button onclick="backToHome()" class="mt-4 text-sm text-stone-400 underline">返回首頁</button>
+    </div>
+
     <!-- VIEW 1: 旅程詳情 (原本的 App 介面) -->
     <div id="view-app" class="h-full flex flex-col hidden">
         <!-- 頂部資訊 -->
@@ -124,14 +148,21 @@
                     <p class="text-[10px] text-gray-400 tracking-widest mb-0.5 font-bold">CURRENT TRIP</p>
                     <div class="flex items-center gap-2">
                         <h1 class="text-xl font-bold tracking-wide text-[#433D3C]" id="header-trip-title">旅程標題</h1>
-                        <button onclick="openDateModal()" class="text-stone-300 hover:text-stone-500 tap-effect"><i data-lucide="settings-2" class="w-4 h-4"></i></button>
+                        <!-- 鎖頭圖示：顯示目前狀態 -->
+                        <button onclick="openSecurityModal()" class="text-stone-300 hover:text-stone-500 tap-effect p-1">
+                            <i id="header-lock-icon" data-lucide="unlock" class="w-4 h-4"></i>
+                        </button>
                     </div>
                 </div>
             </div>
             <div class="text-right flex flex-col items-end gap-1">
                 <div class="flex gap-2 mb-1">
+                    <!-- 設定按鈕 -->
+                    <button onclick="openDateModal()" class="bg-white text-stone-400 p-1.5 rounded-full shadow-sm tap-effect">
+                        <i data-lucide="settings-2" class="w-3 h-3"></i>
+                    </button>
                     <button onclick="shareTrip()" class="bg-blue-50 text-blue-500 px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 tap-effect">
-                        <i data-lucide="user-plus" class="w-3 h-3"></i> 邀請
+                        <i data-lucide="share-2" class="w-3 h-3"></i> 邀請
                     </button>
                 </div>
                  <div class="flex items-center gap-1 text-gray-600 bg-white px-2 py-1 rounded-lg shadow-sm border border-stone-100">
@@ -278,6 +309,24 @@
         </div>
     </div>
 
+    <!-- 安全設定 Modal (新增) -->
+    <div id="security-modal" class="fixed inset-0 bg-[#433D3C]/60 z-50 hidden flex items-center justify-center p-4 backdrop-blur-sm transition-opacity">
+        <div class="bg-[#FEFDF5] w-full max-w-sm rounded-[32px] p-6 shadow-2xl modal-enter relative text-center">
+            <h3 class="text-lg font-bold mb-2 text-[#433D3C]">分享與安全設定</h3>
+            <p class="text-xs text-stone-400 mb-6">設定通行碼，只有知道密碼的人才能查看行程。</p>
+            
+            <div class="mb-6">
+                <label class="text-xs text-stone-500 font-bold mb-2 block text-left ml-1">設定通行碼 (4位數字)</label>
+                <input type="text" id="set-access-code" maxlength="4" class="w-full bg-white rounded-2xl p-4 text-2xl font-bold border border-transparent focus:border-stone-200 focus:outline-none shadow-sm text-center tracking-[0.5em]" placeholder="••••">
+            </div>
+
+            <div class="flex gap-3">
+                <button onclick="closeSecurityModal()" class="flex-1 py-3 rounded-2xl bg-stone-100 text-stone-500 font-bold tap-effect">取消</button>
+                <button onclick="saveAccessCode()" class="flex-1 py-3 rounded-2xl bg-[#433D3C] text-white font-bold tap-effect shadow-lg shadow-stone-300">儲存設定</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Firebase Integration -->
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js';
@@ -297,65 +346,100 @@
         const auth = getAuth(app);
         const db = getFirestore(app);
 
-        // --- ID 管理邏輯 ---
-        // 1. URL有ID -> 使用並存入 visited_trips
-        // 2. 沒有ID -> 檢查 localStorage 'visited_trips'
-        // 3. 初始化 -> 產生 user_trips 列表
-        
         window.myTrips = JSON.parse(localStorage.getItem('my_trips') || '[]');
         window.currentTripId = null;
+        window.isOwner = false;
 
-        // URL Parameter Check
         const urlParams = new URLSearchParams(window.location.search);
         const tripIdFromUrl = urlParams.get('id');
 
-        // UI Helpers
         const indicator = document.getElementById('sync-indicator');
         function showSyncing() { indicator.classList.add('show'); }
         function hideSyncing() { setTimeout(() => indicator.classList.remove('show'), 800); }
 
         // Cloud Functions
-        window.saveTripMetadata = async (id, name, date, days) => {
+        window.saveTripMetadata = async (id, name, date, days, accessCode = null) => {
             if (!auth.currentUser) return;
-            await setDoc(doc(db, 'trips', id), { meta: { name, date, days } }, { merge: true });
+            const data = { name, date, days, ownerId: auth.currentUser.uid };
+            if (accessCode !== null) data.accessCode = accessCode;
+            await setDoc(doc(db, 'trips', id), { meta: data }, { merge: true });
         };
 
         window.saveTripData = async (tripId, type, data) => {
             if (!auth.currentUser) return;
             showSyncing();
-            await setDoc(doc(db, 'trips', tripId, 'data', type), { items: data });
+            const docRef = doc(db, 'trips', tripId, 'data', type);
+            await setDoc(docRef, { items: data });
             hideSyncing();
         };
 
-        // Load Trip Logic
+        // Access Control Logic
+        window.tripMeta = {};
+        window.checkAccess = (meta) => {
+            // 如果有密碼且使用者不是建立者，且尚未解鎖
+            if (meta.accessCode && meta.ownerId !== auth.currentUser.uid) {
+                const unlocked = sessionStorage.getItem(`unlocked_${window.currentTripId}`);
+                if (unlocked !== 'true') {
+                    document.getElementById('lock-screen').classList.add('active');
+                    document.getElementById('view-app').classList.add('hidden');
+                    return false;
+                }
+            }
+            document.getElementById('lock-screen').classList.remove('active');
+            return true;
+        };
+
+        window.verifyAccessCode = () => {
+            const input = document.getElementById('access-code-input').value;
+            if (input === window.tripMeta.accessCode) {
+                sessionStorage.setItem(`unlocked_${window.currentTripId}`, 'true');
+                document.getElementById('lock-screen').classList.remove('active');
+                document.getElementById('view-app').classList.remove('hidden');
+                window.renderTripView();
+            } else {
+                alert("密碼錯誤");
+                document.getElementById('access-code-input').value = '';
+            }
+        };
+
+        // Load Trip
         window.loadTrip = async (tripId) => {
             window.currentTripId = tripId;
             
-            // Add to local list if new
             if(!window.myTrips.includes(tripId)) {
                 window.myTrips.push(tripId);
                 localStorage.setItem('my_trips', JSON.stringify(window.myTrips));
             }
 
-            // Switch View
             document.getElementById('view-home').classList.add('hidden');
-            document.getElementById('view-app').classList.remove('hidden');
-
-            // Load Metadata (Name, Date)
+            
             onSnapshot(doc(db, 'trips', tripId), (docSnap) => {
                 if(docSnap.exists() && docSnap.data().meta) {
-                    const meta = docSnap.data().meta;
-                    document.getElementById('header-trip-title').innerText = meta.name || "未命名旅程";
-                    // 可以在這裡更新日期天數 global state 如果需要
+                    window.tripMeta = docSnap.data().meta;
+                    window.isOwner = (window.tripMeta.ownerId === auth.currentUser.uid);
+                    
+                    // Update Lock Icon
+                    const lockIcon = document.getElementById('header-lock-icon');
+                    if (window.tripMeta.accessCode) {
+                        lockIcon.setAttribute('data-lucide', 'lock');
+                        lockIcon.classList.add('text-red-400');
+                    } else {
+                        lockIcon.setAttribute('data-lucide', 'unlock');
+                        lockIcon.classList.remove('text-red-400');
+                    }
+                    lucide.createIcons();
+
+                    if (window.checkAccess(window.tripMeta)) {
+                         document.getElementById('view-app').classList.remove('hidden');
+                         document.getElementById('header-trip-title').innerText = window.tripMeta.name || "未命名旅程";
+                    }
                 }
             });
 
-            // Load Subcollections
             onSnapshot(doc(db, 'trips', tripId, 'data', 'schedule'), (docSnap) => {
                 if (docSnap.exists()) {
                     window.scheduleData = docSnap.data().items;
-                    window.renderDaySelector();
-                    window.renderTimeline(window.currentDayIndex);
+                    window.renderTripView();
                 }
             });
             
@@ -372,7 +456,14 @@
             });
         };
 
-        // Create New Trip
+        window.renderTripView = () => {
+            // 只有通過權限檢查才渲染
+            if (!document.getElementById('lock-screen').classList.contains('active')) {
+                 window.renderDaySelector();
+                 window.renderTimeline(window.currentDayIndex);
+            }
+        };
+
         window.createNewTrip = async () => {
             const name = prompt("請輸入新旅程名稱 (例如: 東京賞櫻):");
             if(!name) return;
@@ -381,33 +472,31 @@
             const today = new Date().toISOString().split('T')[0];
             const days = 3;
 
-            // 1. Save Metadata
-            await setDoc(doc(db, 'trips', newId), { meta: { name, date: today, days } });
+            await window.saveTripMetadata(newId, name, today, days);
             
-            // 2. Init Empty Data
             const initialSchedule = Array(days).fill().map((_, i) => ({ date: "", month: "", day: `Day ${i+1}`, items: [] }));
             await window.saveTripData(newId, 'schedule', initialSchedule);
             await window.saveTripData(newId, 'expenses', []);
             await window.saveTripData(newId, 'companions', ["我"]);
 
-            // 3. Load it
             window.loadTrip(newId);
         };
 
-        // Render Dashboard List
         window.renderDashboard = async () => {
             if(tripIdFromUrl) {
-                await window.loadTrip(tripIdFromUrl);
-                return;
+                // 如果網址有 ID，直接載入該旅程
+                // 這裡我們等待 Auth 完成後再載入
+                return; 
             }
 
             const container = document.getElementById('trip-list-container');
             container.innerHTML = '';
 
-            // Check if we need to create default Taiwan trip
             if (window.myTrips.length === 0) {
+                // 第一次使用，建立預設台灣行程
                 const defaultId = 'default_taiwan_' + Math.random().toString(36).substr(2, 5);
-                await setDoc(doc(db, 'trips', defaultId), { meta: { name: '台灣五日遊', date: '2025-12-27', days: 5 } });
+                // 重要：擁有者設為當前用戶
+                await setDoc(doc(db, 'trips', defaultId), { meta: { name: '台灣五日遊', date: '2025-12-27', days: 5, ownerId: auth.currentUser.uid } });
                 await window.saveTripData(defaultId, 'schedule', window.defaultScheduleData);
                 await window.saveTripData(defaultId, 'expenses', []);
                 await window.saveTripData(defaultId, 'companions', ["我"]);
@@ -415,18 +504,22 @@
                 localStorage.setItem('my_trips', JSON.stringify(window.myTrips));
             }
 
-            // Fetch metadata for all trips
-            // 注意：這裡是一次讀取，若列表很長可能需要優化，但個人使用沒問題
             let html = '';
             for(const id of window.myTrips) {
                 const docSnap = await getDoc(doc(db, 'trips', id));
                 if(docSnap.exists()) {
                     const meta = docSnap.data().meta || { name: '未命名', date: '?', days: '?' };
+                    const isLocked = meta.accessCode ? true : false;
+                    const lockIcon = isLocked ? '<i data-lucide="lock" class="w-3 h-3 text-stone-300"></i>' : '';
+                    
                     html += `
                         <div onclick="loadTrip('${id}')" class="bg-white rounded-[24px] p-5 zen-shadow relative overflow-hidden card-clickable group border border-white mb-4">
                             <div class="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-stone-100 to-transparent rounded-bl-full opacity-50"></div>
                             <div class="relative z-10">
-                                <span class="text-[10px] font-bold text-stone-400 tracking-widest uppercase">TRIP</span>
+                                <div class="flex justify-between items-start mb-2">
+                                    <span class="text-[10px] font-bold text-stone-400 tracking-widest uppercase flex items-center gap-1">TRIP ${lockIcon}</span>
+                                    <button onclick="deleteTrip(event, '${id}')" class="text-stone-300 hover:text-red-400 p-1 -mr-2 -mt-2"><i data-lucide="trash-2" class="w-4 h-4"></i></button>
+                                </div>
                                 <h2 class="text-2xl font-bold text-[#433D3C] mb-1">${meta.name}</h2>
                                 <div class="flex items-center gap-2 text-stone-500 text-xs font-bold">
                                     <i data-lucide="calendar" class="w-3 h-3"></i>
@@ -443,11 +536,14 @@
             lucide.createIcons();
         };
 
-        // Init
         async function initFirebase() {
             try {
                 await signInAnonymously(auth);
-                window.renderDashboard();
+                if(tripIdFromUrl) {
+                    window.loadTrip(tripIdFromUrl);
+                } else {
+                    window.renderDashboard();
+                }
             } catch (e) { console.error(e); }
         }
         initFirebase();
@@ -484,38 +580,55 @@
             document.getElementById('view-app').classList.add('hidden');
             document.getElementById('view-home').classList.remove('hidden');
             window.currentTripId = null;
-            
-            // 重新整理 Dashboard 確保名稱是最新的
             window.renderDashboard();
         };
 
         window.shareTrip = function() {
             if(!window.currentTripId) return;
             const url = window.location.origin + window.location.pathname + '?id=' + window.currentTripId;
-            if (navigator.clipboard && window.isSecureContext) {
-                navigator.clipboard.writeText(url).then(() => alert("連結已複製！傳送給朋友即可共用行程。"));
+            if(window.tripMeta.accessCode) {
+                 alert(`分享連結已複製！\n\n此旅程已設定通行碼：${window.tripMeta.accessCode}\n請將密碼一併告訴朋友。`);
             } else {
-                prompt("請複製以下連結分享給朋友：", url);
+                 alert("分享連結已複製！");
+            }
+            
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(url);
             }
         };
 
         window.deleteCurrentTrip = async function() {
             if(!confirm("確定要刪除目前的旅程嗎？此操作無法復原。")) return;
             if(!window.currentTripId) return;
-
-            // 刪除本地列表
             window.myTrips = window.myTrips.filter(id => id !== window.currentTripId);
             localStorage.setItem('my_trips', JSON.stringify(window.myTrips));
-            
-            // (Optional) 刪除雲端資料 - 視需求，這裡只刪本地引用
-            // 為了安全起見，通常不直接刪除雲端資料，除非確認
-
             window.closeDateModal();
             window.backToHome();
         };
 
-        // ... (Rest of Logic: Schedule Render, Expenses, Modals etc.)
-        // Copy previous logic but ensure it uses window.saveTripData with currentTripId
+        // Security Functions
+        const securityModal = document.getElementById('security-modal');
+        window.openSecurityModal = function() { 
+            // Only owner can change password
+            if(!window.isOwner) {
+                alert("只有旅程建立者可以修改安全設定");
+                return;
+            }
+            document.getElementById('set-access-code').value = window.tripMeta.accessCode || '';
+            securityModal.classList.remove('hidden'); 
+        }
+        window.closeSecurityModal = function() { securityModal.classList.add('hidden'); }
+        
+        window.saveAccessCode = async function() {
+            const code = document.getElementById('set-access-code').value;
+            if(code && code.length !== 4) return alert("請設定 4 位數通行碼");
+            
+            // Save to cloud
+            await window.saveTripMetadata(window.currentTripId, window.tripMeta.name, window.tripMeta.date, window.tripMeta.days, code || null);
+            
+            window.closeSecurityModal();
+            alert(code ? "已設定密碼保護" : "已移除密碼保護");
+        };
 
         // Core Wrapper
         window.saveCurrentSchedule = () => window.saveTripData(window.currentTripId, 'schedule', window.scheduleData);
@@ -533,8 +646,7 @@
             tripNameInput.value = headerTitle;
             // Attempt to find start date
             const start = window.scheduleData[0] ? `2025-${window.scheduleData[0].month}-${window.scheduleData[0].date}` : ''; 
-            // Simpler: just let user pick, or store metadata in global variable
-            startDateInput.value = new Date().toISOString().split('T')[0]; 
+            startDateInput.value = window.tripMeta.date || new Date().toISOString().split('T')[0]; 
             tripDaysInput.value = window.scheduleData.length;
             dateModal.classList.remove('hidden');
         }
@@ -550,7 +662,8 @@
             
             // Update Metadata
             document.getElementById('header-trip-title').innerText = name;
-            window.saveTripMetadata(window.currentTripId, name, dStr, days);
+            // Preserve existing password
+            window.saveTripMetadata(window.currentTripId, name, dStr, days, window.tripMeta.accessCode);
 
             // Update Schedule Structure
             const start = new Date(dStr);
