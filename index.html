@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>旅遊小幫手 v4.2 (Fixed)</title>
+    <title>旅遊小幫手 v4.3 (Smart Auth)</title>
     
     <!-- PWA Settings -->
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -124,9 +124,20 @@
         .trip-card-bg-1 { background: linear-gradient(135deg, #a18cd1 0%, #fbc2eb 100%); }
         .trip-card-bg-2 { background: linear-gradient(135deg, #84fab0 0%, #8fd3f4 100%); }
         .trip-card-bg-3 { background: linear-gradient(135deg, #e0c3fc 0%, #8ec5fc 100%); }
+        
+        /* Environment Banner */
+        #env-banner {
+            background: #FFFBEB; color: #92400E; font-size: 10px; text-align: center; padding: 4px;
+            border-bottom: 1px solid #FCD34D; display: none;
+        }
     </style>
 </head>
 <body class="h-screen overflow-hidden bg-[#FEFDF5] relative">
+
+    <!-- Preview Mode Banner -->
+    <div id="env-banner">
+        ⚠️ 預覽模式：使用測試資料庫。若要使用 Google 登入，請下載 (Export) 後執行。
+    </div>
 
     <!-- 同步提示 -->
     <div id="sync-indicator">
@@ -488,22 +499,37 @@
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js';
         import { getFirestore, doc, setDoc, getDoc, onSnapshot, collection, query, where } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js';
 
-        // 1. Setup Firebase using environment config
-        const firebaseConfig = {
-            apiKey: "AIzaSyDP1jX1u8TCI3TY8U3xfhEZbaMv9JLgJNw", // 您的 API Key
+        // 1. Setup Firebase (Smart Switcher)
+        let firebaseConfig;
+        let appId;
+        
+        // User's Config (For Export/Production)
+        const userConfig = {
+            apiKey: "AIzaSyDP1jX1u8TCI3TY8U3xfhEZbaMv9JLgJNw",
             authDomain: "mytaiwantrip-603c6.firebaseapp.com",
             projectId: "mytaiwantrip-603c6",
             storageBucket: "mytaiwantrip-603c6.firebasestorage.app",
             messagingSenderId: "1063667328708",
             appId: "1:1063667328708:web:d2ae7acd304e589b790b91"
-            };
+        };
+
+        // Determine Environment
+        if (typeof __firebase_config !== 'undefined') {
+            // Preview Mode: Use System Config to allow Guest Login & UI Testing
+            firebaseConfig = JSON.parse(__firebase_config);
+            appId = typeof __app_id !== 'undefined' ? __app_id : 'travel_app_v2';
+            document.getElementById('env-banner').style.display = 'block';
+        } else {
+            // Export/Production Mode: Use User Config to allow Google Login
+            firebaseConfig = userConfig;
+            appId = 'travel_app_v2';
+        }
+
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
         const provider = new GoogleAuthProvider();
         
-        // 2. Use __app_id for environment consistency
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'travel_app_v2';
         let currentUser = null;
         
         // Multi-Trip State
@@ -615,13 +641,12 @@
         // 4. Initialize Auth & Listeners
         async function initFirebase() {
             try {
-                // Try to sign in with environment token if available
+                // Try to sign in with environment token if available (only in Preview)
                 if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
                     try {
                         await signInWithCustomToken(auth, __initial_auth_token);
                     } catch (tokenError) {
-                        // This happens if the token doesn't match the projectId (e.g. user is using their own Firebase config)
-                        console.warn("Custom token mismatch or auth error, falling back to standard auth:", tokenError.code);
+                        // Fallback if token mismatch
                     }
                 } 
 
@@ -646,15 +671,17 @@
         
         // Google Auth Functions
         window.loginWithGoogle = async () => {
+            // Check if running in Preview Environment
+            if (typeof __firebase_config !== 'undefined') {
+                alert("⚠️ 預覽視窗限制：\nGoogle 登入在此預覽環境中受限。\n\n請點擊右上角的「Export」下載程式碼，在您自己的瀏覽器中執行即可正常使用您的 Google 帳號！");
+                return;
+            }
+
             try {
                 await signInWithPopup(auth, provider);
             } catch (error) {
                 console.error("Google login failed", error);
-                if(error.code === 'auth/popup-blocked' || error.code === 'auth/operation-not-supported-in-this-environment') {
-                    alert("⚠️ 預覽視窗限制：\nGoogle 登入在此預覽環境中受限。\n\n請點擊右上角的「Export」下載程式碼，在您自己的瀏覽器中執行即可正常登入！");
-                } else {
-                    showToast("登入失敗: " + error.message);
-                }
+                showToast("登入失敗: " + error.message);
             }
         }
         
