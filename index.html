@@ -28,6 +28,8 @@
             --bg-color: #FEFDF5;
             --text-main: #433D3C;
             --text-sub: #9CA3AF;
+            --accent: #D4C4B7;
+            --highlight: #F43F5E;
         }
 
         body {
@@ -64,7 +66,6 @@
         .modal-enter { animation: slide-up-spring 0.4s ease-out forwards; }
         
         button, .card-clickable { touch-action: manipulation; cursor: pointer; }
-
         .share-btn-selected { background-color: #433D3C; color: #FFFFFF; border-color: #433D3C; }
         .share-btn-unselected { background-color: #F5F5F4; color: #A8A29E; border-color: transparent; }
         .filter-btn-active { background-color: rgba(255,255,255,0.2); color: white; font-weight: bold; border: 1px solid rgba(255,255,255,0.4); }
@@ -162,7 +163,7 @@
             <i data-lucide="lock" class="w-8 h-8"></i>
         </div>
         <h2 class="text-2xl font-bold text-[#433D3C] mb-2">此旅程受保護</h2>
-        <p class="text-sm text-stone-400 mb-6 text-center">請輸入通行碼以解鎖行程</p>
+        <p class="text-sm text-stone-400 mb-6 text-center">請輸入通行碼</p>
         <div class="flex gap-2 mb-6">
             <input type="text" id="access-code-input" maxlength="4" class="w-32 bg-white text-center text-2xl font-bold tracking-[0.5em] py-3 rounded-2xl border-2 border-stone-100 focus:border-[#433D3C] outline-none" placeholder="••••">
         </div>
@@ -210,7 +211,7 @@
                     <button onclick="openDateModal()" class="text-stone-400 hover:text-stone-600 tap-effect p-1.5 bg-white rounded-full shadow-sm">
                         <i data-lucide="settings-2" class="w-4 h-4"></i>
                     </button>
-                    <!-- 邀請按鈕 (美化版) -->
+                    <!-- 美化後的邀請按鈕 -->
                     <button onclick="window.openShareModal()" class="bg-[#433D3C] text-white px-4 py-1.5 rounded-full text-xs font-bold flex items-center gap-1.5 tap-effect shadow-md border border-transparent hover:bg-stone-700 transition-colors">
                         <i data-lucide="user-plus" class="w-3 h-3"></i>
                         <span>邀請</span>
@@ -361,341 +362,164 @@
         </div>
     </div>
 
+    <!-- 詳細資訊 Modal (點擊行程彈出) -->
+    <div id="detail-modal" class="fixed inset-0 bg-[#433D3C]/60 z-50 hidden flex items-end sm:items-center justify-center p-4 backdrop-blur-sm transition-opacity">
+        <div class="bg-[#FEFDF5] w-full max-w-md rounded-[32px] p-6 shadow-2xl modal-enter relative max-h-[85vh] overflow-y-auto no-scrollbar">
+            <div class="w-12 h-1.5 bg-stone-200 rounded-full mx-auto mb-6"></div>
+            <div id="detail-content" class="space-y-5"></div>
+            <button onclick="closeDetailModal()" class="absolute top-6 right-6 w-8 h-8 rounded-full bg-stone-100 flex items-center justify-center text-stone-400 hover:text-stone-600 tap-effect"><i data-lucide="x" class="w-5 h-5"></i></button>
+        </div>
+    </div>
+
+    <!-- 編輯行程 Modal -->
+    <div id="edit-modal" class="fixed inset-0 bg-[#433D3C]/60 z-50 hidden flex items-end sm:items-center justify-center p-4 backdrop-blur-sm transition-opacity">
+        <div class="bg-[#FEFDF5] w-full max-w-md rounded-[32px] p-6 shadow-2xl modal-enter relative max-h-[90vh] overflow-y-auto no-scrollbar">
+            <h3 class="text-xl font-bold mb-6 flex justify-between items-center text-[#433D3C]">
+                <span id="modal-title">編輯行程</span>
+                <button onclick="closeEditModal()" class="w-8 h-8 rounded-full bg-stone-100 flex items-center justify-center text-stone-400 hover:text-stone-600 tap-effect"><i data-lucide="x" class="w-5 h-5"></i></button>
+            </h3>
+            <form id="edit-form" class="space-y-4" onsubmit="saveScheduleItem(event)">
+                <input type="hidden" id="edit-day-index"><input type="hidden" id="edit-item-index">
+                <div class="grid grid-cols-2 gap-3">
+                    <div class="space-y-1"><label class="text-xs text-stone-500 font-bold ml-1">開始時間</label><input type="time" id="edit-time" class="w-full bg-white rounded-2xl p-4 text-sm font-medium border border-transparent focus:border-stone-200 focus:outline-none shadow-sm text-center"></div>
+                    <div class="space-y-1"><label class="text-xs text-stone-500 font-bold ml-1">結束時間 (選填)</label><input type="time" id="edit-end-time" class="w-full bg-white rounded-2xl p-4 text-sm font-medium border border-transparent focus:border-stone-200 focus:outline-none shadow-sm text-center text-stone-500 placeholder-stone-300"></div>
+                </div>
+                <div class="space-y-1"><label class="text-xs text-stone-500 font-bold ml-1">類型</label><select id="edit-type" class="w-full bg-white rounded-2xl p-4 text-sm font-medium border border-transparent focus:border-stone-200 focus:outline-none shadow-sm appearance-none"><option value="sight">📷 景點</option><option value="food">🍜 美食</option><option value="shop">🛍️ 購物</option><option value="transport">🚌 交通</option><option value="stay">🛏️ 住宿</option></select></div>
+                <div class="space-y-1"><label class="text-xs text-stone-500 font-bold ml-1">標題</label><input type="text" id="edit-title" required class="w-full bg-white rounded-2xl p-4 text-sm font-bold border border-transparent focus:border-stone-200 focus:outline-none shadow-sm" placeholder="行程名稱"></div>
+                <div class="space-y-1"><label class="text-xs text-stone-500 font-bold ml-1">地點</label><div class="relative"><i data-lucide="map-pin" class="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-stone-400"></i><input type="text" id="edit-location" class="w-full bg-white rounded-2xl p-4 pl-10 text-sm font-medium border border-transparent focus:border-stone-200 focus:outline-none shadow-sm" placeholder="輸入地點關鍵字"></div></div>
+                <div class="space-y-1"><label class="text-xs text-stone-500 font-bold ml-1">標籤 (逗號分隔)</label><input type="text" id="edit-tags" class="w-full bg-white rounded-2xl p-4 text-sm font-medium border border-transparent focus:border-stone-200 focus:outline-none shadow-sm" placeholder="例如: 必吃, 推薦"></div>
+                <div class="space-y-1"><label class="text-xs text-stone-500 font-bold ml-1">簡短備註</label><input type="text" id="edit-note" class="w-full bg-white rounded-2xl p-4 text-sm font-medium border border-transparent focus:border-stone-200 focus:outline-none shadow-sm" placeholder="顯示在卡片上的短句"></div>
+                <div class="space-y-1"><label class="text-xs text-stone-500 font-bold ml-1">詳細介紹 (同步顯示)</label><textarea id="edit-description" rows="4" class="w-full bg-white rounded-2xl p-4 text-sm font-medium border border-transparent focus:border-stone-200 focus:outline-none shadow-sm resize-none" placeholder="這裡輸入的內容會同步到詳細頁面..."></textarea></div>
+                <div class="pt-4"><button type="submit" class="w-full py-4 rounded-2xl bg-[#433D3C] text-[#FEFDF5] font-bold shadow-lg shadow-stone-300 tap-effect">儲存變更</button></div>
+            </form>
+        </div>
+    </div>
+
     <!-- Firebase Integration -->
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js';
         import { getAuth, signInAnonymously, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js';
         import { getFirestore, doc, setDoc, onSnapshot, deleteDoc, getDoc, updateDoc, arrayUnion, arrayRemove } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js';
 
-        const firebaseConfig = {
-          apiKey: "AIzaSyDP1jX1u8TCI3TY8U3xfhEZbaMv9JLgJNw",
-          authDomain: "mytaiwantrip-603c6.firebaseapp.com",
-          projectId: "mytaiwantrip-603c6",
-          storageBucket: "mytaiwantrip-603c6.firebasestorage.app",
-          messagingSenderId: "1063667328708",
-          appId: "1:1063667328708:web:d2ae7acd304e589b790b91"
-        };
+        const firebaseConfig = { apiKey: "AIzaSyDP1jX1u8TCI3TY8U3xfhEZbaMv9JLgJNw", authDomain: "mytaiwantrip-603c6.firebaseapp.com", projectId: "mytaiwantrip-603c6", storageBucket: "mytaiwantrip-603c6.firebasestorage.app", messagingSenderId: "1063667328708", appId: "1:1063667328708:web:d2ae7acd304e589b790b91" };
+        const app = initializeApp(firebaseConfig); const auth = getAuth(app); const db = getFirestore(app); const provider = new GoogleAuthProvider();
 
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
-        const provider = new GoogleAuthProvider();
-
-        window.myTrips = JSON.parse(localStorage.getItem('my_trips') || '[]');
-        window.currentTripId = null;
-        window.isOwner = false;
-        window.currentUser = null;
-        window.tripMeta = {};
-
-        const urlParams = new URLSearchParams(window.location.search);
-        const tripIdFromUrl = urlParams.get('id');
-
+        window.myTrips = JSON.parse(localStorage.getItem('my_trips') || '[]'); window.currentTripId = null; window.isOwner = false; window.currentUser = null; window.tripMeta = {};
+        const urlParams = new URLSearchParams(window.location.search); const tripIdFromUrl = urlParams.get('id');
         const indicator = document.getElementById('sync-indicator');
-        function showSyncing() { indicator.classList.add('show'); }
-        function hideSyncing() { setTimeout(() => indicator.classList.remove('show'), 800); }
+        function showSyncing() { indicator.classList.add('show'); } function hideSyncing() { setTimeout(() => indicator.classList.remove('show'), 800); }
 
-        // Auth Logic
         window.toggleUserMenu = () => document.getElementById('user-menu').classList.toggle('show');
-        document.addEventListener('click', (e) => {
-            if (!document.getElementById('user-menu').contains(e.target) && !document.getElementById('user-avatar').contains(e.target)) {
-                document.getElementById('user-menu').classList.remove('show');
-            }
-        });
-        window.handleLogin = async () => {
-            try { await signInWithPopup(auth, provider); document.getElementById('user-menu').classList.remove('show'); } 
-            catch (e) { console.error(e); alert("登入失敗: " + e.message); }
-        };
-        window.handleLogout = async () => {
-            await signOut(auth); await signInAnonymously(auth); window.location.reload();
-        };
+        document.addEventListener('click', (e) => { if (!document.getElementById('user-menu').contains(e.target) && !document.getElementById('user-avatar').contains(e.target)) document.getElementById('user-menu').classList.remove('show'); });
+        window.handleLogin = async () => { try { await signInWithPopup(auth, provider); document.getElementById('user-menu').classList.remove('show'); } catch (e) { console.error(e); alert("登入失敗: " + e.message); } };
+        window.handleLogout = async () => { await signOut(auth); await signInAnonymously(auth); window.location.reload(); };
 
-        // Sync Logic
-        async function syncUserTrips(user) {
-            if (!user || user.isAnonymous) return;
-            const userProfileRef = doc(db, 'artifacts', 'travel_app_v2', 'users', user.uid, 'data', 'profile');
-            let cloudTrips = [];
-            try {
-                const docSnap = await getDoc(userProfileRef);
-                if (docSnap.exists()) cloudTrips = docSnap.data().ids || [];
-            } catch (e) {}
-            const newCloudTrips = [...new Set([...cloudTrips, ...window.myTrips])];
-            if (newCloudTrips.length > cloudTrips.length) await setDoc(userProfileRef, { ids: newCloudTrips }, { merge: true });
-            window.myTrips = newCloudTrips;
-            localStorage.setItem('my_trips', JSON.stringify(window.myTrips));
-            if (!window.currentTripId) window.renderDashboard();
-        }
-
-        // Cloud Functions
-        window.saveTripMetadata = async (id, name, date, days, accessCode = null, allowedEmails = null, newOwnerId = null) => {
-            if (!auth.currentUser) return;
-            const data = { name, date, days };
-            // 修復：確保新行程寫入 ownerId
-            if (newOwnerId) data.ownerId = newOwnerId;
-            else if(!window.tripMeta.ownerId && auth.currentUser.uid) data.ownerId = auth.currentUser.uid;
-
-            if (accessCode !== null) data.accessCode = accessCode;
-            if (allowedEmails !== null) data.allowedEmails = allowedEmails;
-            await setDoc(doc(db, 'trips', id), { meta: data }, { merge: true });
-        };
-
-        window.saveTripData = async (tripId, type, data) => {
-            if (!auth.currentUser) return;
-            showSyncing();
-            const docRef = doc(db, 'trips', tripId, 'data', type);
-            await setDoc(docRef, { items: data });
-            hideSyncing();
-        };
-
-        // Access Control Logic
+        async function syncUserTrips(user) { if (!user || user.isAnonymous) return; const ref = doc(db, 'artifacts', 'travel_app_v2', 'users', user.uid, 'data', 'profile'); let cloud = []; try { const s = await getDoc(ref); if(s.exists()) cloud=s.data().ids||[]; } catch(e){} const all = [...new Set([...cloud, ...window.myTrips])]; if(all.length > cloud.length) await setDoc(ref, { ids: all }, { merge: true }); window.myTrips = all; localStorage.setItem('my_trips', JSON.stringify(window.myTrips)); if (!window.currentTripId) window.renderDashboard(); }
+        window.saveTripMetadata = async (id, name, date, days, accessCode, allowedEmails, newOwnerId) => { if (!auth.currentUser) return; const data = { name, date, days }; if(newOwnerId) data.ownerId = newOwnerId; else if(!window.tripMeta.ownerId && auth.currentUser.uid) data.ownerId = auth.currentUser.uid; if (accessCode !== undefined) data.accessCode = accessCode; if (allowedEmails !== undefined) data.allowedEmails = allowedEmails; await setDoc(doc(db, 'artifacts', 'travel_app_v2', 'public', 'data', 'trips', id), { meta: data }, { merge: true }); };
+        window.saveTripData = async (tripId, type, data) => { if (!auth.currentUser) return; showSyncing(); await setDoc(doc(db, 'artifacts', 'travel_app_v2', 'public', 'data', 'trips', tripId, 'data', type), { items: data }); hideSyncing(); };
+        
         window.checkAccess = (meta) => {
             const user = auth.currentUser;
-            
-            // 1. 擁有者 -> 允許
             if (user && meta.ownerId === user.uid) return true;
-            
-            // 2. 在白名單內 -> 允許
             if (user && !user.isAnonymous && meta.allowedEmails && meta.allowedEmails.includes(user.email)) return true;
-
-            // 3. 有輸入密碼 -> 允許
-            const unlocked = sessionStorage.getItem(`unlocked_${window.currentTripId}`);
-            if (unlocked === 'true') return true;
-
-            // 4. 有密碼但未解鎖 -> 顯示鎖定
-            if (meta.accessCode) {
-                document.getElementById('lock-screen').classList.add('active');
-                return false;
-            }
-
-            // 5. 沒密碼且不在名單 (嚴格模式)
+            if (sessionStorage.getItem(`unlocked_${window.currentTripId}`) === 'true') return true;
+            if (meta.accessCode) { document.getElementById('lock-screen').classList.add('active'); return false; }
             if ((meta.allowedEmails && meta.allowedEmails.length > 0) || meta.ownerId) {
                 document.getElementById('current-user-email-display').innerText = user && !user.isAnonymous ? user.email : "未登入 (訪客)";
-                
-                // **修復：如果這個行程沒有 ownerId (孤兒行程)，顯示認領按鈕**
-                if (!meta.ownerId) {
-                    document.getElementById('claim-btn').classList.remove('hidden');
-                } else {
-                    document.getElementById('claim-btn').classList.add('hidden');
-                }
-                
+                if (!meta.ownerId) document.getElementById('claim-btn').classList.remove('hidden'); else document.getElementById('claim-btn').classList.add('hidden');
                 document.getElementById('access-denied-screen').classList.add('active');
                 return false;
             }
-
-            return true; 
-        };
-
-        window.verifyAccessCode = () => {
-            const input = document.getElementById('access-code-input').value;
-            if (input === window.tripMeta.accessCode) {
-                sessionStorage.setItem(`unlocked_${window.currentTripId}`, 'true');
-                document.getElementById('lock-screen').classList.remove('active');
-                document.getElementById('view-app').classList.remove('hidden');
-                loadSubCollections(window.currentTripId);
-                window.renderTripView();
-            } else {
-                alert("密碼錯誤");
-                document.getElementById('access-code-input').value = '';
-            }
+            return true;
         };
         
-        // **新增：認領行程功能**
-        window.claimOwnership = async () => {
-            if(!auth.currentUser) return alert("請先登入");
-            if(confirm("確定要認領此行程為您所有嗎？")) {
-                await setDoc(doc(db, 'trips', window.currentTripId), { meta: { ownerId: auth.currentUser.uid } }, { merge: true });
-                alert("認領成功！您現在是此行程的擁有者。");
-                window.location.reload();
-            }
-        };
+        window.verifyAccessCode = () => { if (document.getElementById('access-code-input').value === window.tripMeta.accessCode) { sessionStorage.setItem(`unlocked_${window.currentTripId}`, 'true'); document.getElementById('lock-screen').classList.remove('active'); document.getElementById('view-app').classList.remove('hidden'); loadSubCollections(window.currentTripId); window.renderTripView(); } else { alert("密碼錯誤"); } };
+        window.claimOwnership = async () => { if(!auth.currentUser) return alert("請先登入"); if(confirm("確定要認領？")) { await setDoc(doc(db, 'artifacts', 'travel_app_v2', 'public', 'data', 'trips', window.currentTripId), { meta: { ownerId: auth.currentUser.uid } }, { merge: true }); alert("認領成功"); window.location.reload(); } };
+        
+        window.inviteUser = async () => { const email = document.getElementById('invite-email-input').value.trim(); if (!email) return; const current = window.tripMeta.allowedEmails || []; if (!current.includes(email)) { const news = [...current, email]; await setDoc(doc(db, 'artifacts', 'travel_app_v2', 'public', 'data', 'trips', window.currentTripId), { meta: { allowedEmails: news } }, { merge: true }); window.tripMeta.allowedEmails = news; renderShareList(); } document.getElementById('invite-email-input').value = ''; };
+        window.removeUser = async (email) => { if(!confirm(`移除 ${email}？`)) return; const current = window.tripMeta.allowedEmails || []; const news = current.filter(e => e !== email); await setDoc(doc(db, 'artifacts', 'travel_app_v2', 'public', 'data', 'trips', window.currentTripId), { meta: { allowedEmails: news } }, { merge: true }); window.tripMeta.allowedEmails = news; renderShareList(); };
 
-        window.inviteUser = async () => {
-            const email = document.getElementById('invite-email-input').value.trim();
-            if (!email) return;
-            
-            const currentEmails = window.tripMeta.allowedEmails || [];
-            if (!currentEmails.includes(email)) {
-                const newEmails = [...currentEmails, email];
-                await setDoc(doc(db, 'trips', window.currentTripId), { meta: { allowedEmails: newEmails } }, { merge: true });
-            }
-            document.getElementById('invite-email-input').value = '';
-        };
+        onAuthStateChanged(auth, (user) => { if (user) { window.currentUser = user; if(!user.isAnonymous) { document.getElementById('user-img').src = user.photoURL; document.getElementById('user-img').classList.remove('hidden'); document.getElementById('user-avatar').classList.add('logged-in'); document.getElementById('user-info').innerText = user.email; document.getElementById('user-info').classList.remove('hidden'); document.getElementById('btn-login').classList.add('hidden'); document.getElementById('btn-logout').classList.remove('hidden'); syncUserTrips(user); } } else { signInAnonymously(auth); } if(tripIdFromUrl) loadTrip(tripIdFromUrl); else window.renderDashboard(); });
 
-        window.removeUser = async (email) => {
-            if(!confirm(`確定要移除 ${email} 的權限嗎？`)) return;
-            const currentEmails = window.tripMeta.allowedEmails || [];
-            const newEmails = currentEmails.filter(e => e !== email);
-            await setDoc(doc(db, 'trips', window.currentTripId), { meta: { allowedEmails: newEmails } }, { merge: true });
-        };
-
-        // Init App
-        onAuthStateChanged(auth, (user) => {
-            if (user) {
-                window.currentUser = user;
-                if(!user.isAnonymous) {
-                    document.getElementById('user-img').src = user.photoURL;
-                    document.getElementById('user-img').classList.remove('hidden');
-                    document.getElementById('user-avatar').classList.add('logged-in');
-                    document.getElementById('user-info').innerText = user.email;
-                    document.getElementById('user-info').classList.remove('hidden');
-                    document.getElementById('btn-login').classList.add('hidden');
-                    document.getElementById('btn-logout').classList.remove('hidden');
-                    syncUserTrips(user);
-                }
-            } else {
-                signInAnonymously(auth);
-            }
-
-            if(tripIdFromUrl) {
-                loadTrip(tripIdFromUrl);
-            } else {
-                window.renderDashboard();
-            }
-        });
-
-        // Load Trip
         window.loadTrip = async (tripId) => {
             window.currentTripId = tripId;
-            
-            if(!window.myTrips.includes(tripId)) {
-                window.myTrips.push(tripId);
-                localStorage.setItem('my_trips', JSON.stringify(window.myTrips));
-            }
-
+            if(!window.myTrips.includes(tripId)) { window.myTrips.push(tripId); localStorage.setItem('my_trips', JSON.stringify(window.myTrips)); }
             document.getElementById('view-home').classList.add('hidden');
-            
-            onSnapshot(doc(db, 'trips', tripId), (docSnap) => {
+            onSnapshot(doc(db, 'artifacts', 'travel_app_v2', 'public', 'data', 'trips', tripId), (docSnap) => {
                 if(docSnap.exists()) {
                     window.tripMeta = docSnap.data().meta || {};
                     window.isOwner = (auth.currentUser && window.tripMeta.ownerId === auth.currentUser.uid);
-                    
-                    // Update UI based on meta
                     const lockIcon = document.getElementById('header-lock-icon');
-                    if (window.tripMeta.accessCode) {
-                        lockIcon.setAttribute('data-lucide', 'lock');
-                        lockIcon.classList.add('text-red-400');
-                    } else {
-                        lockIcon.setAttribute('data-lucide', 'unlock');
-                        lockIcon.classList.remove('text-red-400');
-                    }
+                    if (window.tripMeta.accessCode) { lockIcon.setAttribute('data-lucide', 'lock'); lockIcon.classList.add('text-red-400'); } else { lockIcon.setAttribute('data-lucide', 'unlock'); lockIcon.classList.remove('text-red-400'); }
                     lucide.createIcons();
-
-                    // Render Share List
                     renderShareList();
-
-                    // Check Access
-                    if (window.checkAccess(window.tripMeta)) {
-                         document.getElementById('view-app').classList.remove('hidden');
-                         document.getElementById('header-trip-title').innerText = window.tripMeta.name || "未命名旅程";
-                         
-                         // Load Subcollections only if accessed
-                         loadSubCollections(tripId);
-                    }
+                    if (window.checkAccess(window.tripMeta)) { document.getElementById('view-app').classList.remove('hidden'); document.getElementById('header-trip-title').innerText = window.tripMeta.name || "未命名旅程"; loadSubCollections(tripId); }
                 }
             });
         };
-
-        function loadSubCollections(tripId) {
-            onSnapshot(doc(db, 'trips', tripId, 'data', 'schedule'), (docSnap) => {
-                if (docSnap.exists()) {
-                    window.scheduleData = docSnap.data().items;
-                    window.renderTripView();
-                }
-            });
-            onSnapshot(doc(db, 'trips', tripId, 'data', 'expenses'), (s) => { window.expenses = s.exists()?s.data().items:[]; window.renderExpenses(); });
-            onSnapshot(doc(db, 'trips', tripId, 'data', 'companions'), (s) => { window.companions = s.exists()?s.data().items:["我"]; window.updatePayerSelect(); window.renderShareButtons(); window.renderFilter(); });
-        }
-
-        function renderShareList() {
-            const container = document.getElementById('access-list-container');
-            const emails = window.tripMeta.allowedEmails || [];
-            let html = '';
-            
-            // Add Owner (mock)
-            html += `<div class="flex justify-between items-center bg-stone-50 p-2 rounded-lg"><div class="flex items-center gap-2"><div class="w-6 h-6 rounded-full bg-[#433D3C] text-white flex items-center justify-center text-xs">O</div><span class="text-xs font-bold text-stone-600">擁有者</span></div></div>`;
-
-            emails.forEach(email => {
-                html += `
-                    <div class="flex justify-between items-center bg-white border border-stone-100 p-2 rounded-lg">
-                        <div class="flex items-center gap-2">
-                            <div class="w-6 h-6 rounded-full bg-blue-100 text-blue-500 flex items-center justify-center text-xs">${email[0].toUpperCase()}</div>
-                            <span class="text-xs text-stone-600">${email}</span>
-                        </div>
-                        ${window.isOwner ? `<button onclick="removeUser('${email}')" class="text-stone-300 hover:text-red-400"><i data-lucide="x" class="w-4 h-4"></i></button>` : ''}
-                    </div>
-                `;
-            });
-            
-            if(emails.length === 0) html += `<div class="text-center text-xs text-stone-300 py-2">還沒有邀請任何人</div>`;
-            
-            container.innerHTML = html;
-            lucide.createIcons();
-        }
-
-        window.renderTripView = () => {
-            if (!document.getElementById('lock-screen').classList.contains('active') && !document.getElementById('access-denied-screen').classList.contains('active')) {
-                 window.renderDaySelector();
-                 window.renderTimeline(window.currentDayIndex);
-            }
+        function loadSubCollections(tripId) { onSnapshot(doc(db, 'artifacts', 'travel_app_v2', 'public', 'data', 'trips', tripId, 'data', 'schedule'), (s) => { if (s.exists()) { window.scheduleData = s.data().items; window.renderTripView(); } }); onSnapshot(doc(db, 'artifacts', 'travel_app_v2', 'public', 'data', 'trips', tripId, 'data', 'expenses'), (s) => { window.expenses = s.exists()?s.data().items:[]; window.renderExpenses(); }); onSnapshot(doc(db, 'artifacts', 'travel_app_v2', 'public', 'data', 'trips', tripId, 'data', 'companions'), (s) => { window.companions = s.exists()?s.data().items:["我"]; window.updatePayerSelect(); window.renderShareButtons(); window.renderFilter(); }); }
+        function renderShareList() { const c = document.getElementById('access-list-container'); const ems = window.tripMeta.allowedEmails || []; let h = `<div class="flex justify-between items-center bg-stone-50 p-2 rounded-lg mb-2"><div class="flex items-center gap-2"><div class="w-6 h-6 rounded-full bg-[#433D3C] text-white flex items-center justify-center text-xs">O</div><span class="text-xs font-bold text-stone-600">擁有者</span></div></div>`; ems.forEach(e => { h += `<div class="flex justify-between items-center bg-white border border-stone-100 p-2 rounded-lg mb-1"><div class="flex items-center gap-2"><div class="w-6 h-6 rounded-full bg-blue-100 text-blue-500 flex items-center justify-center text-xs">${e[0].toUpperCase()}</div><span class="text-xs text-stone-600">${e}</span></div>${window.isOwner ? `<button onclick="removeUser('${e}')" class="text-stone-300 hover:text-red-400"><i data-lucide="x" class="w-4 h-4"></i></button>` : ''}</div>`; }); if(ems.length===0) h+=`<div class="text-center text-xs text-stone-300 py-2">還沒有邀請任何人</div>`; c.innerHTML = h; lucide.createIcons(); }
+        window.renderTripView = () => { if (!document.getElementById('lock-screen').classList.contains('active') && !document.getElementById('access-denied-screen').classList.contains('active')) { window.renderDaySelector(); window.renderTimeline(window.currentDayIndex); fetchWeather(window.scheduleData[window.currentDayIndex]); } };
+        
+        // Explicitly attach openShareModal to window for button onclick
+        window.openShareModal = function() {
+            if(!window.currentTripId) return;
+            const url = window.location.origin + window.location.pathname + '?id=' + window.currentTripId;
+            document.getElementById('share-link-text').innerText = url; // Only for manual copy
+            renderShareList();
+            document.getElementById('share-modal').classList.remove('hidden');
         };
-
-        // Dashboard logic
+        window.closeShareModal = () => document.getElementById('share-modal').classList.add('hidden');
+        window.copyShareLink = function() {
+            const url = document.getElementById('share-link-text').innerText;
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(url).then(() => alert("連結已複製"));
+            } else { prompt("請複製連結：", url); }
+        }
+        window.shareViaGmail = function() {
+            const url = document.getElementById('share-link-text').innerText;
+            const tripName = window.tripMeta.name || "旅遊行程";
+            const subject = encodeURIComponent(`[邀請] 一起來規劃 ${tripName} 吧！`);
+            let bodyText = `Hi,\n\n我正在使用旅遊小幫手規劃 ${tripName}，邀請你一起加入編輯！\n\n🔗 行程連結：\n${url}`;
+            if(window.tripMeta.accessCode) bodyText += `\n\n🔑 通行碼：${window.tripMeta.accessCode}`;
+            const body = encodeURIComponent(bodyText);
+            window.open(`https://mail.google.com/mail/?view=cm&fs=1&su=${subject}&body=${body}`, '_blank');
+            window.closeShareModal();
+        }
+        
+        // (Rest of logic for dashboard, create, delete, expenses, etc.)
         window.renderDashboard = async () => {
             if(tripIdFromUrl) return;
             const container = document.getElementById('trip-list-container');
             container.innerHTML = '';
-            
-            if (window.myTrips.length === 0) {
-                 container.innerHTML = `<div class="text-center text-stone-400 mt-20 flex flex-col items-center"><i data-lucide="map" class="w-12 h-12 mb-4 opacity-50"></i><p class="text-lg font-bold">還沒有旅程</p><p class="text-sm mt-2">點擊右上角的「+」開始規劃</p></div>`;
-                lucide.createIcons();
-                return;
-            }
-
+            if (window.myTrips.length === 0) { container.innerHTML = `<div class="text-center text-stone-400 mt-20 flex flex-col items-center"><i data-lucide="map" class="w-12 h-12 mb-4 opacity-50"></i><p class="text-lg font-bold">還沒有旅程</p><p class="text-sm mt-2">點擊右上角的「+」開始規劃</p></div>`; lucide.createIcons(); return; }
             let html = '';
             for(const id of window.myTrips) {
-                const docSnap = await getDoc(doc(db, 'trips', id));
+                const docSnap = await getDoc(doc(db, 'artifacts', 'travel_app_v2', 'public', 'data', 'trips', id));
                 if(docSnap.exists()) {
                     const meta = docSnap.data().meta || { name: '未命名', date: '?', days: '?' };
-                    const isLocked = meta.accessCode ? true : false;
-                    const isPrivate = (meta.allowedEmails && meta.allowedEmails.length > 0);
-                    
-                    let badge = '';
-                    if(isLocked) badge = '<i data-lucide="lock" class="w-3 h-3 text-stone-300"></i>';
-                    if(isPrivate) badge += '<i data-lucide="users" class="w-3 h-3 text-blue-300 ml-1"></i>';
-
+                    const isLocked = meta.accessCode ? true : false; const isPrivate = (meta.allowedEmails && meta.allowedEmails.length > 0);
+                    let badge = ''; if(isLocked) badge = '<i data-lucide="lock" class="w-3 h-3 text-stone-300"></i>'; if(isPrivate) badge += '<i data-lucide="users" class="w-3 h-3 text-blue-300 ml-1"></i>';
                     html += `<div onclick="loadTrip('${id}')" class="bg-white rounded-[24px] p-5 zen-shadow relative overflow-hidden card-clickable group border border-white mb-4"><div class="absolute top-0 right-0 w-24 h-24 bg-gradient-to-bl from-stone-100 to-transparent rounded-bl-full opacity-50"></div><div class="relative z-10"><div class="flex justify-between items-start mb-2"><span class="text-[10px] font-bold text-stone-400 tracking-widest uppercase flex items-center gap-1">TRIP ${badge}</span><button onclick="deleteTrip(event, '${id}')" class="text-stone-300 hover:text-red-400 p-1 -mr-2 -mt-2"><i data-lucide="trash-2" class="w-4 h-4"></i></button></div><h2 class="text-2xl font-bold text-[#433D3C] mb-1">${meta.name}</h2><div class="flex items-center gap-2 text-stone-500 text-xs font-bold"><i data-lucide="calendar" class="w-3 h-3"></i><span>${meta.date}</span><span class="w-1 h-1 rounded-full bg-stone-300"></span><span>${meta.days} Days</span></div></div></div>`;
                 }
             }
-            container.innerHTML = html;
-            lucide.createIcons();
+            container.innerHTML = html; lucide.createIcons();
         };
-
-        window.createNewTrip = async () => {
-            const name = prompt("請輸入新旅程名稱:");
-            if(!name) return;
-            const newId = 'trip_' + Date.now().toString(36);
-            const today = new Date().toISOString().split('T')[0];
-            
-            const initialEmails = (auth.currentUser && !auth.currentUser.isAnonymous) ? [auth.currentUser.email] : [];
-            const ownerId = auth.currentUser ? auth.currentUser.uid : null;
-            
-            await window.saveTripMetadata(newId, name, today, 3, null, initialEmails, ownerId);
-            const initialSchedule = Array(3).fill().map((_, i) => ({ date: "", month: "", day: `Day ${i+1}`, items: [] }));
-            await window.saveTripData(newId, 'schedule', initialSchedule);
-            await window.saveTripData(newId, 'expenses', []);
-            await window.saveTripData(newId, 'companions', ["我"]);
-            window.loadTrip(newId);
-        };
+        window.createNewTrip = async () => { const name = prompt("請輸入新旅程名稱:"); if(!name) return; const newId = 'trip_' + Date.now().toString(36); const today = new Date().toISOString().split('T')[0]; const initialEmails = (auth.currentUser && !auth.currentUser.isAnonymous) ? [auth.currentUser.email] : []; const ownerId = auth.currentUser ? auth.currentUser.uid : null; await window.saveTripMetadata(newId, name, today, 3, null, initialEmails, ownerId); const initialSchedule = Array(3).fill().map((_, i) => ({ date: "", month: "", day: `Day ${i+1}`, items: [] })); await window.saveTripData(newId, 'schedule', initialSchedule); await window.saveTripData(newId, 'expenses', []); await window.saveTripData(newId, 'companions', ["我"]); window.loadTrip(newId); };
+        window.deleteCurrentTrip = async function() { if(!confirm("確定刪除？")) return; window.myTrips = window.myTrips.filter(id => id !== window.currentTripId); localStorage.setItem('my_trips', JSON.stringify(window.myTrips)); window.closeDateModal(); window.backToHome(); };
+        const securityModal = document.getElementById('security-modal');
+        window.openSecurityModal = function() { if(!window.isOwner) return alert("權限不足"); document.getElementById('set-access-code').value = window.tripMeta.accessCode || ''; securityModal.classList.remove('hidden'); }
+        window.closeSecurityModal = function() { securityModal.classList.add('hidden'); }
+        window.saveAccessCode = async function() { const c = document.getElementById('set-access-code').value; await window.saveTripMetadata(window.currentTripId, window.tripMeta.name, window.tripMeta.date, window.tripMeta.days, c || null, window.tripMeta.allowedEmails); window.closeSecurityModal(); alert("設定已更新"); };
     </script>
 
     <script>
         // --- UI Logic (Standard) ---
         const EXCHANGE_RATE = 0.24;
         const WEATHER_ICONS = { 0: 'sun', 1: 'cloud-sun', 2: 'cloud-sun', 3: 'cloud', 45: 'cloud-fog', 48: 'cloud-fog', 51: 'cloud-drizzle', 53: 'cloud-drizzle', 55: 'cloud-drizzle', 61: 'cloud-rain', 63: 'cloud-rain', 65: 'cloud-rain', 71: 'snowflake', 73: 'snowflake', 75: 'snowflake', 80: 'cloud-rain-wind', 81: 'cloud-rain-wind', 82: 'cloud-rain-wind', 95: 'cloud-lightning', 96: 'cloud-lightning', 99: 'cloud-lightning' };
-        
-        // 預設行程
         window.defaultScheduleData = [
-            { date: "27", month: "12", day: "Day 1", items: [{ time: "08:00", endTime: "10:00", title: "抵達落機", type: "transport", location: "台灣桃園國際機場", note: "購買悠遊卡/SIM卡", description: "機場捷運直達車約35-40分鐘可抵達台北車站。" }, { time: "11:00", endTime: "12:00", title: "民宿擺行李", type: "stay", location: "台北", note: "寄放行李", description: "先將行李寄放，輕裝上陣。" }, { time: "13:00", endTime: "14:30", title: "程味珍意麵滷味", type: "food", location: "程味珍意麵", tags: ["必吃滷味"], note: "40年老店", description: "必點滷蘿蔔、大豆干。" }, { time: "15:00", endTime: "16:30", title: "西門町", type: "sight", location: "西門町", tags: ["逛街"], note: "年輕人集散地", description: "推薦小吃：阿宗麵線。" }, { time: "17:00", endTime: "18:30", title: "妳有咖啡 neo cafe", type: "food", location: "妳有咖啡 neo cafe", tags: ["咖啡"], note: "隱藏版咖啡廳", description: "推薦大人味焦糖布丁。" }, { time: "19:00", endTime: "20:30", title: "詹記麻辣火鍋", type: "food", location: "詹記麻辣火鍋", tags: ["必吃鴨血"], note: "台北最難訂", description: "記得點油條。" }, { time: "21:00", endTime: "22:30", title: "南機場夜市", type: "food", location: "南機場夜市", tags: ["在地美食"], note: "CP值高", description: "推薦山內雞肉。" }] },
-            { date: "28", month: "12", day: "Day 2", items: [{ time: "09:00", endTime: "10:00", title: "早餐", type: "food", location: "台北", note: "附近早餐", description: "" }, { time: "12:00", endTime: "15:30", title: "九份十份", type: "sight", location: "九份老街", tags: ["山城"], note: "神隱少女", description: "吃芋圓。" }, { time: "16:00", endTime: "17:30", title: "猴硐貓村", type: "sight", location: "猴硐", tags: ["貓咪"], note: "CNN推薦", description: "貓奴天堂。" }, { time: "19:00", endTime: "20:30", title: "大股熟成燒肉", type: "food", location: "大股熟成", tags: ["牛舌"], note: "清酒機", description: "專人代烤。" }, { time: "22:00", endTime: "23:30", title: "寧夏夜市", type: "food", location: "寧夏夜市", tags: ["米其林"], note: "路寬", description: "芋餅必排。" }] },
+            { date: "27", month: "12", day: "Day 1", items: [{ time: "08:00", endTime: "10:00", title: "抵達落機", type: "transport", location: "台灣桃園國際機場", note: "購買悠遊卡/SIM卡", description: "機場捷運直達車約35-40分鐘可抵達台北車站。記得在機場先換好台幣，或使用ATM提款。" }, { time: "11:00", endTime: "12:00", title: "民宿擺行李", type: "stay", location: "台北", note: "寄放行李", description: "先將行李寄放，輕裝上陣。" }, { time: "13:00", endTime: "14:30", title: "程味珍意麵滷味", type: "food", location: "程味珍意麵", tags: ["必吃滷味"], note: "40年老店", description: "必點滷蘿蔔、大豆干。" }, { time: "15:00", endTime: "16:30", title: "西門町", type: "sight", location: "西門町", tags: ["逛街"], note: "年輕人集散地", description: "推薦小吃：阿宗麵線。" }, { time: "17:00", endTime: "18:30", title: "妳有咖啡 neo cafe", type: "food", location: "妳有咖啡 neo cafe", tags: ["咖啡"], note: "隱藏版咖啡廳", description: "推薦大人味焦糖布丁。" }, { time: "19:00", endTime: "20:30", title: "詹記麻辣火鍋", type: "food", location: "詹記麻辣火鍋", tags: ["必吃鴨血"], note: "台北最難訂", description: "記得點油條。" }, { time: "21:00", endTime: "22:30", title: "南機場夜市", type: "food", location: "南機場夜市", tags: ["在地美食"], note: "CP值高", description: "推薦山內雞肉。" }] },
+            { date: "28", month: "12", day: "Day 2", items: [{ time: "09:00", endTime: "10:00", title: "早餐", type: "food", location: "台北", note: "附近早餐", description: "" }, { time: "12:00", endTime: "15:30", title: "九份十份", type: "sight", location: "九份老街", tags: ["山城", "燈籠"], note: "神隱少女", description: "吃芋圓。" }, { time: "16:00", endTime: "17:30", title: "猴硐貓村", type: "sight", location: "猴硐", tags: ["貓咪"], note: "CNN推薦", description: "貓奴天堂。" }, { time: "19:00", endTime: "20:30", title: "大股熟成燒肉", type: "food", location: "大股熟成", tags: ["牛舌"], note: "清酒機", description: "專人代烤。" }, { time: "22:00", endTime: "23:30", title: "寧夏夜市", type: "food", location: "寧夏夜市", tags: ["米其林"], note: "路寬", description: "芋餅必排。" }] },
             { date: "29", month: "12", day: "Day 3", items: [{ time: "11:00", endTime: "12:30", title: "犁園湯包館", type: "food", location: "犁園", tags: ["湯包"], note: "絲瓜湯包", description: "清爽。" }, { time: "14:00", endTime: "15:00", title: "三創", type: "sight", location: "三創", tags: ["3C"], note: "科技", description: "" }, { time: "15:00", endTime: "17:00", title: "華山1914", type: "sight", location: "華山", tags: ["展覽"], note: "文青", description: "拍照。" }, { time: "17:00", endTime: "18:00", title: "帕米貝可", type: "shop", location: "帕米貝可", tags: ["伴手禮"], note: "蝴蝶酥", description: "送禮。" }, { time: "19:00", endTime: "20:30", title: "拾漁", type: "food", location: "拾漁", tags: ["日料"], note: "CP值高", description: "" }, { time: "21:00", endTime: "22:30", title: "饒河夜市", type: "food", location: "饒河", tags: ["米其林"], note: "胡椒餅", description: "藥燉排骨。" }] },
             { date: "30", month: "12", day: "Day 4", items: [{ time: "12:00", endTime: "13:30", title: "比漾廣場", type: "shop", location: "比漾", tags: ["百貨"], note: "永和", description: "" }, { time: "14:00", endTime: "15:30", title: "樂華夜市", type: "sight", location: "樂華", tags: ["在地"], note: "路寬", description: "雪花冰。" }, { time: "16:00", endTime: "17:00", title: "Chii! Gelato", type: "food", location: "Chii", tags: ["冰淇淋"], note: "天然", description: "開心果。" }, { time: "19:00", endTime: "20:30", title: "金月日本鍋", type: "food", location: "金月", tags: ["清酒鍋"], note: "頂級", description: "專人服務。" }, { time: "21:00", endTime: "22:30", title: "臨江街夜市", type: "food", location: "臨江街", tags: ["通化"], note: "方便", description: "冰火湯圓。" }] },
             { date: "31", month: "12", day: "Day 5", items: [{ time: "12:00", endTime: "12:30", title: "Check Out", type: "stay", location: "台北", note: "檢查行李", description: "" }, { time: "14:00", endTime: "17:00", title: "華泰名品城", type: "shop", location: "華泰", tags: ["Outlet"], note: "衝刺", description: "高鐵旁。" }, { time: "19:00", endTime: "20:00", title: "晚餐", type: "food", location: "機場", note: "簡單", description: "" }, { time: "22:00", endTime: "23:00", title: "回香港", type: "transport", location: "機場", note: "提早", description: "" }] }
