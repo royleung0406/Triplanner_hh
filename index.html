@@ -795,7 +795,7 @@
                     createdAt: new Date().toISOString(),
                     isShared: true
                 };
-                const metaRef = doc(db, 'artifacts', appId, 'public', 'data', 'shared_trips', tripId);
+                const metaRef = doc(db, 'artifacts', appId, 'public', 'data', 'shared_trips', trip.id);
                 await setDoc(metaRef, publicMeta);
                 
                 // C. Update Local Index to mark as shared
@@ -1092,6 +1092,25 @@
         window.switchTab = function(tabId) { document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden')); document.getElementById(`view-${tabId}`).classList.remove('hidden'); ['schedule', 'info', 'budget'].forEach(id => { const btn = document.getElementById(`tab-${id}`); const span = btn.querySelector('span'); if(id === tabId) { btn.className = "active-tab flex items-center gap-2 px-5 py-3 tap-effect transition-all duration-300"; span.classList.remove('hidden'); } else { btn.className = "inactive-tab flex items-center gap-2 px-3 py-3 tap-effect transition-all duration-300"; span.classList.add('hidden'); } }); }
 
         function generateHourlyWeather() { const ws = [{i:'sun',t:22},{i:'cloud-sun',t:24},{i:'cloud',t:23},{i:'cloud-rain',t:20}]; let h=''; for(let i=6;i<=23;i++){ const m=ws[Math.floor(Math.random()*ws.length)]; h+=`<div class="weather-scroll-item flex flex-col items-center justify-center bg-stone-50 rounded-xl py-2 px-1 snap-start"><span class="text-[10px] text-stone-400 font-mono mb-1">${i}:00</span><i data-lucide="${m.i}" class="w-5 h-5 text-stone-600 mb-1"></i><span class="text-xs font-bold text-stone-800">${m.t}°</span></div>`; } document.getElementById('hourly-weather-container').innerHTML=h; }
+
+        function init() {
+            lucide.createIcons();
+            generateHourlyWeather();
+            
+            // Initial view state is handled by CSS (view-trip-list is active)
+            const expenseInput = document.getElementById('expense-amount');
+            if(expenseInput) {
+                expenseInput.addEventListener('input', function(e) {
+                    const val = parseInt(e.target.value) || 0;
+                    document.getElementById('input-hkd-preview').innerText = Math.round(val * EXCHANGE_RATE);
+                });
+            }
+            
+            // Set default date for new trip
+            const today = new Date().toISOString().split('T')[0];
+            const dateInput = document.getElementById('new-trip-date');
+            if(dateInput) dateInput.value = today;
+        }
 
         init();
         
