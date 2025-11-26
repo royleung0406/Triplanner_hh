@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>旅遊小幫手 v3.3 (多幣別記帳)</title>
+    <title>旅遊小幫手 v3.2 (Share)</title>
     
     <!-- PWA Settings -->
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -188,7 +188,7 @@
             </div>
             
             <div class="text-right flex items-center gap-3">
-                 <!-- Share / Save Button -->
+                <!-- Share / Save Button -->
                 <div id="share-save-area">
                     <button onclick="openShareModal()" id="share-button" class="bg-white hover:bg-stone-50 text-stone-600 px-3 py-1.5 rounded-xl text-xs font-bold shadow-sm border border-stone-100 tap-effect hidden">
                         <i data-lucide="share-2" class="w-4 h-4 mr-1 inline-block"></i> 分享
@@ -268,16 +268,16 @@
                      <h3 class="text-lg font-bold text-gray-800 mb-5 flex items-center gap-2">
                         <div class="w-8 h-8 rounded-full bg-orange-50 flex items-center justify-center text-orange-500"><i data-lucide="alert-circle" class="w-4 h-4"></i></div>
                         行前準備
-                     </h3>
+                    </h3>
                     <ul class="space-y-3">
-                         <li class="flex items-center gap-3 bg-stone-50 p-3 rounded-xl">
-                             <input type="checkbox" class="w-5 h-5 rounded-full accent-[#433D3C]">
-                             <span class="text-sm text-stone-600 font-bold">線上入台證申請</span>
-                           </li>
-                         <li class="flex items-center gap-3 bg-stone-50 p-3 rounded-xl">
-                             <input type="checkbox" class="w-5 h-5 rounded-full accent-[#433D3C]">
-                             <span class="text-sm text-stone-600 font-bold">購買旅遊保險</span>
-                           </li>
+                        <li class="flex items-center gap-3 bg-stone-50 p-3 rounded-xl">
+                            <input type="checkbox" class="w-5 h-5 rounded-full accent-[#433D3C]">
+                            <span class="text-sm text-stone-600 font-bold">線上入台證申請</span>
+                        </li>
+                        <li class="flex items-center gap-3 bg-stone-50 p-3 rounded-xl">
+                            <input type="checkbox" class="w-5 h-5 rounded-full accent-[#433D3C]">
+                            <span class="text-sm text-stone-600 font-bold">購買旅遊保險</span>
+                        </li>
                     </ul>
                 </div>
             </div>
@@ -297,8 +297,7 @@
 
                     <div class="mb-6">
                         <div class="flex items-baseline gap-2">
-                            <!-- UPDATED CURRENCY DISPLAY -->
-                            <span class="text-lg text-stone-400 font-bold" id="total-currency-unit">NT$</span> 
+                            <span class="text-lg text-stone-400 font-bold">NT$</span>
                             <h2 class="text-5xl font-bold tracking-tighter font-mono" id="total-expense-twd">0</h2>
                         </div>
                         <p class="text-stone-400 text-sm mt-1 font-medium flex items-center gap-1">
@@ -316,16 +315,10 @@
                         記一筆
                     </h3>
 
-                    <!-- NEW CURRENCY SELECTOR -->
-                    <div class="flex items-center justify-between">
-                        <h4 class="text-xs text-stone-500 font-bold flex items-center gap-1"><i data-lucide="dollar-sign" class="w-3 h-3"></i> 選擇幣別</h4>
-                        <select id="expense-currency" onchange="window.handleCurrencyChange(this.value)" class="bg-white text-stone-700 text-sm font-bold px-3 py-1.5 rounded-lg border-none focus:ring-0 outline-none cursor-pointer shadow-sm"></select>
-                    </div>
-
                     <div class="bg-stone-50 rounded-2xl px-5 py-4 flex flex-col border border-transparent focus-within:border-[#433D3C] transition-all shadow-inner relative group">
-                        <label class="text-[10px] text-stone-400 font-bold mb-1 uppercase" id="expense-amount-label">金額 (TWD)</label>
+                        <label class="text-[10px] text-stone-400 font-bold mb-1 uppercase">金額 (TWD)</label>
                         <div class="flex items-baseline">
-                            <span class="text-stone-400 text-2xl mr-2 font-bold" id="input-currency-unit">$</span>
+                            <span class="text-stone-400 text-2xl mr-2 font-bold">$</span>
                             <input type="number" id="expense-amount" placeholder="0" class="flex-1 bg-transparent text-4xl focus:outline-none text-stone-800 font-mono font-bold placeholder-stone-200">
                         </div>
                         <div class="absolute right-4 top-1/2 -translate-y-1/2 text-stone-300 font-mono text-sm pointer-events-none group-focus-within:text-stone-400 transition-colors">
@@ -468,6 +461,9 @@
         import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, GoogleAuthProvider, signInWithPopup, signOut } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js';
         import { getFirestore, doc, setDoc, onSnapshot, collection, getDoc } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js';
 
+        // 台灣新台幣 (TWD) 到 港幣 (HKD) 的模擬匯率 (約 1 TWD = 0.25 HKD)
+        const EXCHANGE_RATE = 0.25;
+        
         // 1. Setup Firebase using environment config
         const firebaseConfig = {
             apiKey: "AIzaSyDP1jX1u8TCI3TY8U3xfhEZbaMv9JLgJNw", // 您的 API Key
@@ -489,6 +485,8 @@
         // Multi-Trip State
         window.tripsList = [];
         let tripUnsubscribes = []; // To store listeners and detach them when switching trips
+        window.currentDayIndex = 0; // Set initial day index
+        window.currentFilter = 'ALL'; // Set initial expense filter
 
         // New Global Trip Context
         window.currentTrip = {
@@ -497,17 +495,6 @@
             isShared: false, // Is the trip currently being viewed/edited in the public collaborative path?
             creatorId: null, // The original creator's UID (only for shared trips)
             meta: {} // Stores the trip metadata (title, days, startDate)
-        };
-
-        // --- Currency State (UPDATED) ---
-        window.currentCurrency = 'TWD';
-        window.exchangeRate = 0.26; // TWD to HKD (initial default)
-        window.availableCurrencies = {
-            'TWD': { symbol: 'NT$', rateToHKD: 0.26, label: '台幣' },
-            'HKD': { symbol: 'HK$', rateToHKD: 1, label: '港幣' },
-            'USD': { symbol: '$', rateToHKD: 7.8, label: '美金' },
-            'JPY': { symbol: '¥', rateToHKD: 0.051, label: '日圓' },
-            'EUR': { symbol: '€', rateToHKD: 8.2, label: '歐元' }
         };
         
         // --- Firestore Path Helper ---
@@ -553,13 +540,13 @@
         window.saveTripsIndex = async (trips) => {
              if (!currentUser) return;
              try {
-                 showSyncing();
-                 const docRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'travel_data', 'trips_index');
-                 await setDoc(docRef, { items: trips });
-                 showSaved();
+                showSyncing();
+                const docRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'travel_data', 'trips_index');
+                await setDoc(docRef, { items: trips });
+                showSaved();
              } catch (e) { 
-                 console.error("Sync error (Index):", e); 
-                 showError();
+                console.error("Sync error (Index):", e); 
+                showError();
              }
         }
         
@@ -661,7 +648,7 @@
                 console.error("Google login failed", error);
                 if(error.code === 'auth/popup-blocked' || error.code === 'auth/operation-not-supported-in-this-environment') {
                     // Cannot use alert(), using custom toast/message
-                    showToast("⚠️ 登入受限：Google 登入在此預覽環境中受限。請嘗試匯出程式碼運行。");
+                    showToast("⚠️ 登入受限: 請在瀏覽器中運行程式碼。");
                 } else {
                     showToast("登入失敗: " + error.message);
                 }
@@ -671,7 +658,7 @@
         window.logoutGoogle = async () => {
             // Using custom confirm/modal logic (since alert is banned)
             showCustomConfirm('確定要登出嗎？', async () => {
-                 await signOut(auth);
+                await signOut(auth);
             });
         }
         
@@ -722,7 +709,7 @@
                         return;
                     } else {
                         // Trip ID in URL, but not in user's list. Clear the URL.
-                         history.pushState(null, '', window.location.pathname);
+                          history.pushState(null, '', window.location.pathname);
                     }
                 }
                 
@@ -800,7 +787,6 @@
                             window.renderTimeline(window.currentDayIndex);
                         } else if(type === 'expenses') {
                             window.expenses = data;
-                            // NEW: Rerender expenses using the current exchange rate
                             window.renderExpenses();
                         } else if(type === 'companions') {
                             window.companions = data;
@@ -1061,74 +1047,8 @@
             modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
         }
 
-        // --- Currency Logic (UPDATED IMPLEMENTATION) ---
-        
-        function setupCurrencySelector() {
-            const selector = document.getElementById('expense-currency');
-            selector.innerHTML = Object.entries(window.availableCurrencies)
-                .map(([code, data]) => `<option value="${code}">${data.symbol} ${code} - ${data.label}</option>`)
-                .join('');
-            selector.value = window.currentCurrency;
-        }
 
-        // Simulated Exchange Rate Fetch (with exponential backoff structure)
-        async function fetchExchangeRateSimulated(fromCurrency, retries = 3, delay = 1000) {
-            // Simulate API call and delay
-            await new Promise(resolve => setTimeout(resolve, 300));
-            
-            const rate = window.availableCurrencies[fromCurrency]?.rateToHKD;
-
-            if (rate !== undefined) {
-                return rate;
-            } else {
-                // Simulated exponential backoff retry logic
-                if (retries > 0) {
-                    await new Promise(resolve => setTimeout(resolve, delay));
-                    return fetchExchangeRateSimulated(fromCurrency, retries - 1, delay * 2);
-                }
-                console.error(`Exchange rate for ${fromCurrency} not found.`);
-                return 0; // Return 0 if rate is unknown/fetch fails
-            }
-        }
-
-        window.handleCurrencyChange = async function(newCurrencyCode) {
-            if (newCurrencyCode === window.currentCurrency) return;
-            
-            showSyncing();
-            // Fetch rate (simulated)
-            const rate = await fetchExchangeRateSimulated(newCurrencyCode);
-            
-            if (rate > 0) {
-                window.currentCurrency = newCurrencyCode;
-                window.exchangeRate = rate;
-                updateCurrencyUI(newCurrencyCode, rate);
-                showSaved();
-            } else {
-                showError("無法取得最新匯率，請檢查網路。");
-                // Revert UI if fetch fails
-                document.getElementById('expense-currency').value = window.currentCurrency;
-            }
-        }
-
-        function updateCurrencyUI(currencyCode, rate) {
-            const data = window.availableCurrencies[currencyCode];
-            
-            // Update labels in budget view
-            document.getElementById('total-currency-unit').innerText = data.symbol;
-            
-            // Update labels in input form
-            document.getElementById('expense-amount-label').innerText = `金額 (${currencyCode})`;
-            document.getElementById('input-currency-unit').innerText = data.symbol;
-
-            // Trigger re-render of expenses to use new rate
-            window.renderExpenses(); 
-            
-            // Recalculate input HKD preview
-            const val = parseFloat(document.getElementById('expense-amount').value) || 0;
-            document.getElementById('input-hkd-preview').innerText = Math.round(val * rate);
-        }
-
-        // --- Other Logic (MODIFIED) ---
+        // --- Other Logic (Kept as before, updated save calls to use global context) ---
         
         // Load List UI (Same as before)
         window.renderTripListUI = function() {
@@ -1302,120 +1222,74 @@
         
         window.renderExpenses = function() {
             const list = document.getElementById('expense-list');
-            // 'total-expense-twd' now represents the Total in the current selected currency
-            const totalSelectedCurrencyEl = document.getElementById('total-expense-twd'); 
+            const totalTwdEl = document.getElementById('total-expense-twd');
             const totalHkdEl = document.getElementById('total-expense-hkd');
             const titleEl = document.getElementById('budget-title');
             const listStatusEl = document.getElementById('list-filter-status');
-            const selectedCurrencyData = window.availableCurrencies[window.currentCurrency] || { symbol: '$', rateToHKD: 0, code: 'TWD' };
+            let displayExpenses = []; let totalTWD = 0;
             
-            // Update the total currency unit symbol
-            document.getElementById('total-currency-unit').innerText = selectedCurrencyData.symbol;
-            
-            let displayExpenses = []; 
-            let totalHKD = 0; // The canonical total is calculated in HKD
-
-            // Loop through all expenses to calculate total HKD
-            window.expenses.forEach(ex => {
-                const amount = ex.amount || 0;
-                // Use the saved rate (rateToHKD) for historical expenses, or fall back to current map if missing
-                const rate = ex.rateToHKD || window.availableCurrencies[ex.currency]?.rateToHKD || 0; 
-                totalHKD += amount * rate;
-            });
-            
-            // Apply filter logic
             if (window.currentFilter === 'ALL') { 
-                displayExpenses = window.expenses; 
-                titleEl.innerText = "總消費 (ALL)"; 
-                listStatusEl.innerText = "顯示全部"; 
+                displayExpenses = window.expenses; titleEl.innerText = "總消費 (ALL)"; listStatusEl.innerText = "顯示全部"; 
+                totalTWD = window.expenses.reduce((sum, ex) => sum + parseInt(ex.amount), 0);
             } else { 
-                titleEl.innerText = `個人分攤 (${window.currentFilter})`; 
-                listStatusEl.innerText = `只顯示 ${window.currentFilter} 的分攤項目`; 
-                
-                // Filter and calculate personal share HKD
-                let personalHKDTotal = 0;
+                titleEl.innerText = `個人消費 (${window.currentFilter})`; listStatusEl.innerText = `只顯示 ${window.currentFilter} 的分攤項目`; 
                 displayExpenses = window.expenses.filter(ex => { 
-                    const sharers = ex.sharedBy && ex.sharedBy.length > 0 ? ex.sharedBy : ["我"]; 
-                    if (sharers.includes(window.currentFilter)) {
-                        const amount = ex.amount || 0;
-                        const rate = ex.rateToHKD || window.availableCurrencies[ex.currency]?.rateToHKD || 0;
-                        const sharersCount = sharers.length;
-                        personalHKDTotal += (amount * rate / sharersCount);
-                        return true;
-                    }
-                    return false;
-                });
-                totalHKD = personalHKDTotal; // Override total for filtered view
+                    // Check if the current filter user is in the sharedBy array
+                    return ex.sharedBy && ex.sharedBy.includes(window.currentFilter); 
+                }); 
+                
+                // Calculate individual share
+                totalTWD = displayExpenses.reduce((sum, ex) => { 
+                    const sharersCount = (ex.sharedBy && ex.sharedBy.length > 0) ? ex.sharedBy.length : 1; 
+                    // Only sum the portion this user is responsible for
+                    return sum + (parseInt(ex.amount) / sharersCount); 
+                }, 0); 
             }
             
-            // Display totals
-            const selectedCurrencyTotal = totalHKD / selectedCurrencyData.rateToHKD; // Convert total HKD back to selected currency
-            totalSelectedCurrencyEl.innerText = Math.round(selectedCurrencyTotal).toLocaleString();
-            totalHkdEl.innerText = Math.round(totalHKD).toLocaleString();
-
-            // Render list items
             list.innerHTML = displayExpenses.map((ex, i) => {
-                const currencyData = window.availableCurrencies[ex.currency] || { symbol: '$', code: 'UNK' };
-                const amount = ex.amount || 0;
-                const rate = ex.rateToHKD || window.availableCurrencies[ex.currency]?.rateToHKD || 0; // Use saved rate
+                // Find the original index for deletion, needed because displayExpenses might be filtered
+                const originalIndex = window.expenses.findIndex(originalEx => 
+                    originalEx.item === ex.item && originalEx.amount === ex.amount && originalEx.payer === ex.payer
+                );
                 
-                let displayAmount = amount; 
-                let displayLabel = "總額"; 
-                let detailText = ""; 
-                let amountClass = "text-stone-800";
-
+                const fullAmount = parseInt(ex.amount);
+                let displayAmount = fullAmount; let displayLabel = "總額"; let detailText = ""; let amountClass = "text-stone-800";
+                
                 if (window.currentFilter !== 'ALL') { 
                     const sharersCount = (ex.sharedBy && ex.sharedBy.length > 0) ? ex.sharedBy.length : 1; 
-                    displayAmount = amount / sharersCount; 
+                    displayAmount = fullAmount / sharersCount; 
                     displayLabel = "應付"; 
-                    detailText = `(總額 ${currencyData.symbol}${Math.round(amount)} ÷ ${sharersCount}人)`; 
+                    detailText = `(總額 $${fullAmount} ÷ ${sharersCount}人)`; 
                     amountClass = "text-blue-600"; 
                 }
                 
-                const amountHKD = Math.round(displayAmount * rate); 
-                const amountDisplay = Math.round(displayAmount);
-                
+                const amountHKD = Math.round(displayAmount * EXCHANGE_RATE); 
+                const amountTWD = Math.round(displayAmount);
                 const payer = ex.payer || "我"; 
                 const sharedBy = ex.sharedBy || ["我"]; 
                 const shareText = sharedBy.length === window.companions.length ? "全員" : sharedBy.join(",");
-
-                return `<div class="flex flex-col bg-white p-4 rounded-[20px] shadow-sm border border-stone-100"><div class="flex justify-between items-start mb-2"><div><span class="text-base font-bold text-stone-700 block">${ex.item}</span><span class="text-[10px] text-stone-400">由 ${payer} 先付 • 分攤: ${shareText}</span></div><div class="text-right"><div class="text-[10px] text-stone-300 font-bold mb-0.5 text-right">${displayLabel}</div><div class="font-mono font-bold ${amountClass} text-lg">${currencyData.symbol} ${amountDisplay}</div><div class="font-mono text-xs text-stone-400">≈ HK$ ${amountHKD}</div>${detailText ? `<div class="text-[10px] text-stone-400 mt-0.5">${detailText}</div>` : ''}</div></div><div class="flex justify-end border-t border-stone-50 pt-2 mt-1"><button onclick="deleteExpense(${i})" class="text-xs text-stone-300 hover:text-red-400 flex items-center gap-1 px-2 py-1 rounded tap-effect"><i data-lucide="trash-2" class="w-3 h-3"></i> 刪除</button></div></div>`;
+                
+                return `<div class="flex flex-col bg-white p-4 rounded-[20px] shadow-sm border border-stone-100"><div class="flex justify-between items-start mb-2"><div><span class="text-base font-bold text-stone-700 block">${ex.item}</span><span class="text-[10px] text-stone-400">由 ${payer} 先付 • 分攤: ${shareText}</span></div><div class="text-right"><div class="text-[10px] text-stone-300 font-bold mb-0.5 text-right">${displayLabel}</div><div class="font-mono font-bold ${amountClass} text-lg">NT$ ${amountTWD}</div><div class="font-mono text-xs text-stone-400">≈ HK$ ${amountHKD}</div>${detailText ? `<div class="text-[10px] text-stone-400 mt-0.5">${detailText}</div>` : ''}</div></div><div class="flex justify-end border-t border-stone-50 pt-2 mt-1"><button onclick="deleteExpense(${originalIndex})" class="text-xs text-stone-300 hover:text-red-400 flex items-center gap-1 px-2 py-1 rounded tap-effect"><i data-lucide="trash-2" class="w-3 h-3"></i> 刪除</button></div></div>`;
             }).reverse().join('') || `<div class="text-center text-stone-300 text-sm py-8">沒有相關紀錄</div>`;
-
-            window.renderFilter(); 
-            lucide.createIcons();
+            totalTwdEl.innerText = Math.round(totalTWD).toLocaleString(); 
+            totalHkdEl.innerText = Math.round(totalTWD * EXCHANGE_RATE).toLocaleString();
+            window.renderFilter(); lucide.createIcons();
         }
 
-        window.addExpense = function() { 
-            const item = document.getElementById('expense-item').value; 
-            const amount = document.getElementById('expense-amount').value; 
-            const payer = document.getElementById('expense-payer').value; 
-            const shareBtns = document.querySelectorAll('.share-toggle-btn.share-btn-selected'); 
-            const sharedBy = Array.from(shareBtns).map(btn => btn.getAttribute('data-name')); 
-            
-            if(!item || !amount) { window.showToast("請輸入項目和金額"); return; } 
-            if(sharedBy.length === 0) { window.showToast("請至少選擇一位分攤對象"); return; } 
-            
-            window.expenses.push({ 
-                item, 
-                amount: parseFloat(amount), // Save as number
-                payer, 
-                sharedBy,
-                currency: window.currentCurrency, // Save currency code
-                rateToHKD: window.exchangeRate // Save rate at time of expense
-            }); 
-            
-            document.getElementById('expense-item').value = ''; 
-            document.getElementById('expense-amount').value = '';
-            document.getElementById('input-hkd-preview').innerText = '0'; 
-            window.saveToFirestore('expenses', window.expenses); 
-        }
-
+        window.addExpense = function() { const item = document.getElementById('expense-item').value; const amount = document.getElementById('expense-amount').value; const payer = document.getElementById('expense-payer').value; const shareBtns = document.querySelectorAll('.share-toggle-btn.share-btn-selected'); const sharedBy = Array.from(shareBtns).map(btn => btn.getAttribute('data-name')); if(!item || !amount) { window.showToast("請輸入項目和金額"); return; } if(sharedBy.length === 0) { window.showToast("請至少選擇一位分攤對象"); return; } window.expenses.push({ item, amount, payer, sharedBy }); document.getElementById('expense-item').value = ''; document.getElementById('expense-amount').value = ''; document.getElementById('input-hkd-preview').innerText = '0'; window.saveToFirestore('expenses', window.expenses); }
         window.deleteExpense = function(index) { showCustomConfirm('確定刪除這筆紀錄？', () => { window.expenses.splice(index, 1); window.saveToFirestore('expenses', window.expenses); }); }
         
         window.promptAddCompanion = function() { 
-            // FIXED: Using prompt() is unstable in Canvas, just notify user to manage companions manually
-            window.showToast("請透過編輯按鈕手動編輯旅伴列表，或直接在分攤選項中增加/刪除。");
+            // Using prompt is fine here, as it's typically used inside a modal/dialog flow anyway
+            const name = prompt("請輸入旅伴名字："); 
+            if (name && name.trim() !== "") { 
+                if (!window.companions.includes(name.trim())) { 
+                    window.companions.push(name.trim()); 
+                    window.saveToFirestore('companions', window.companions); 
+                } else { 
+                    window.showToast("已經在名單內囉！"); 
+                } 
+            } 
         }
         window.updatePayerSelect = function() { document.getElementById('expense-payer').innerHTML = window.companions.map(c => `<option value="${c}">${c}</option>`).join(''); }
         window.renderShareButtons = function() { document.getElementById('share-buttons-container').innerHTML = window.companions.map(c => `<button type="button" class="share-toggle-btn share-btn-selected px-3 py-1.5 rounded-lg text-xs font-bold border transition-colors" data-name="${c}" onclick="toggleShare(this)">${c}</button>`).join(''); }
@@ -1437,7 +1311,7 @@
         window.openEditModal = function(dayIndex, itemIndex) { const item = window.scheduleData[dayIndex].items[itemIndex]; document.getElementById('edit-day-index').value = dayIndex; document.getElementById('edit-item-index').value = itemIndex; modalTitle.innerText = "編輯行程"; document.getElementById('edit-time').value = item.time; document.getElementById('edit-end-time').value = item.endTime || ""; document.getElementById('edit-type').value = item.type; document.getElementById('edit-title').value = item.title; document.getElementById('edit-location').value = item.location; document.getElementById('edit-tags').value = item.tags?item.tags.join(', '):''; document.getElementById('edit-note').value = item.note||''; document.getElementById('edit-description').value = item.description||''; editModal.classList.remove('hidden'); }
         window.closeEditModal = function() { editModal.classList.add('hidden'); }
         window.saveScheduleItem = function(e) { e.preventDefault(); const d = parseInt(document.getElementById('edit-day-index').value); const i = parseInt(document.getElementById('edit-item-index').value); const item = { time: document.getElementById('edit-time').value, endTime: document.getElementById('edit-end-time').value, type: document.getElementById('edit-type').value, title: document.getElementById('edit-title').value, location: document.getElementById('edit-location').value, tags: document.getElementById('edit-tags').value.split(',').map(t=>t.trim()).filter(t=>t), note: document.getElementById('edit-note').value, description: document.getElementById('edit-description').value }; if (i === -1) window.scheduleData[d].items.push(item); else window.scheduleData[d].items[i] = item; window.saveToFirestore('schedule', window.scheduleData); window.renderTimeline(d); closeEditModal(); }
-        window.deleteScheduleItem = function(d, i) { showCustomConfirm("確定刪除此行程項目？", () => { window.scheduleData[d].items.splice(i, 1); window.saveToFirestore('schedule', window.scheduleData); window.renderTimeline(d); }); }
+        window.deleteScheduleItem = function(d, i) { showCustomConfirm("確定刪除？", () => { window.scheduleData[d].items.splice(i, 1); window.saveToFirestore('schedule', window.scheduleData); window.renderTimeline(d); }); }
         editModal.addEventListener('click', (e) => { if (e.target === editModal) closeEditModal(); });
 
         // Date & Days
@@ -1450,68 +1324,62 @@
         window.closeDateModal = function() { dateModal.classList.add('hidden'); }
         window.changeDays = function(delta) { let v = parseInt(document.getElementById('trip-days-input').value) + delta; if(v < 1) v = 1; document.getElementById('trip-days-input').value = v; }
         
+        // FIX: Reworked updateTravelDates to use showCustomConfirm and structure the update logic
         window.updateTravelDates = function() {
-            const dStr = document.getElementById('start-date-input').value; const days = parseInt(document.getElementById('trip-days-input').value);
-            if(!dStr) return window.showToast("請選擇日期");
+            const dStr = document.getElementById('start-date-input').value;
+            const days = parseInt(document.getElementById('trip-days-input').value);
+            if (!dStr) return window.showToast("請選擇日期");
+
             const start = new Date(dStr.replace(/-/g, '/'));
             const oldLength = window.scheduleData.length;
-            
-            // Helper function to execute the update/save logic
-            function updateDatesAndSave() {
-                 window.scheduleData.forEach((d, i) => { const dt = new Date(start); dt.setDate(start.getDate()+i); d.date=dt.getDate(); d.month=dt.getMonth()+1; d.day=`Day ${i+1}`; });
-                 
-                 window.saveToFirestore('schedule', window.scheduleData); 
-                 
-                 if(!window.currentTrip.isShared) {
-                     const tripIndex = window.tripsList.findIndex(t => t.id === window.currentTrip.id);
-                     if (tripIndex !== -1) {
-                         window.tripsList[tripIndex].days = days;
-                         window.tripsList[tripIndex].startDate = dStr;
-                         window.currentTrip.meta = window.tripsList[tripIndex];
-                         window.saveTripsIndex(window.tripsList);
-                         window.saveTripMeta(window.currentTrip.id, window.currentTrip.meta);
-                     }
-                 }
-                 
-                 window.renderDaySelector(); window.renderTimeline(0); closeDateModal();
-            }
+            const newDayIndex = window.currentDayIndex > days - 1 ? 0 : window.currentDayIndex;
 
-            if(days > oldLength) { 
-                for(let i=oldLength; i<days; i++) window.scheduleData.push({ date:"", month:"", day:`Day ${i+1}`, items:[] }); 
-                updateDatesAndSave();
-            }
-            else if(days < oldLength) { 
-                // FIXED: Use custom confirm here
-                showCustomConfirm(`確定減少天數？減少天數將會刪除多餘日期的行程。`, () => {
-                    window.scheduleData.length = days;
-                    updateDatesAndSave();
-                });
-                return;
-            } else {
-                updateDatesAndSave();
-            }
-        }
-
-        window.switchTab = function(tabId) { 
-            document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden')); 
-            document.getElementById(`view-${tabId}`).classList.remove('hidden'); 
-            ['schedule', 'info', 'budget'].forEach(id => { 
-                const btn = document.getElementById(`tab-${id}`); 
-                const span = btn.querySelector('span'); 
-                if(id === tabId) { 
-                    btn.className = "active-tab flex items-center gap-2 px-5 py-3 tap-effect transition-all duration-300"; 
-                    span.classList.remove('hidden'); 
-                    // NEW: Ensure currency UI is initialized when switching to budget tab
-                    if (id === 'budget') {
-                        setupCurrencySelector();
-                        updateCurrencyUI(window.currentCurrency, window.exchangeRate);
+            const doUpdate = () => {
+                if (days > oldLength) {
+                    for (let i = oldLength; i < days; i++) {
+                        window.scheduleData.push({ date: "", month: "", day: `Day ${i + 1}`, items: [] });
                     }
-                } else { 
-                    btn.className = "inactive-tab flex items-center gap-2 px-3 py-3 tap-effect transition-all duration-300"; 
-                    span.classList.add('hidden'); 
-                } 
-            }); 
-        }
+                } else if (days < oldLength) {
+                    window.scheduleData.length = days;
+                }
+
+                window.scheduleData.forEach((d, i) => {
+                    const dt = new Date(start);
+                    dt.setDate(start.getDate() + i);
+                    d.date = dt.getDate();
+                    d.month = dt.getMonth() + 1;
+                    d.day = `Day ${i + 1}`;
+                });
+
+                window.saveToFirestore('schedule', window.scheduleData);
+
+                // Update metadata locally and remotely (only for the creator's private copy)
+                if (!window.currentTrip.isShared) {
+                    const tripIndex = window.tripsList.findIndex(t => t.id === window.currentTrip.id);
+                    if (tripIndex !== -1) {
+                        window.tripsList[tripIndex].days = days;
+                        window.tripsList[tripIndex].startDate = dStr;
+                        window.currentTrip.meta = window.tripsList[tripIndex];
+                        window.saveTripsIndex(window.tripsList);
+                        window.saveTripMeta(window.currentTrip.id, window.currentTrip.meta);
+                    }
+                }
+
+                window.renderDaySelector();
+                window.renderTimeline(newDayIndex);
+                closeDateModal();
+            };
+
+            if (days < oldLength) {
+                const confirmMessage = `確定減少天數？這將刪除 Day ${days + 1} 及之後的行程，無法復原。`;
+                showCustomConfirm(confirmMessage, doUpdate);
+            } else {
+                doUpdate();
+            }
+        };
+
+
+        window.switchTab = function(tabId) { document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden')); document.getElementById(`view-${tabId}`).classList.remove('hidden'); ['schedule', 'info', 'budget'].forEach(id => { const btn = document.getElementById(`tab-${id}`); const span = btn.querySelector('span'); if(id === tabId) { btn.className = "active-tab flex items-center gap-2 px-5 py-3 tap-effect transition-all duration-300"; span.classList.remove('hidden'); } else { btn.className = "inactive-tab flex items-center gap-2 px-3 py-3 tap-effect transition-all duration-300"; span.classList.add('hidden'); } }); }
 
         function generateHourlyWeather() { const ws = [{i:'sun',t:22},{i:'cloud-sun',t:24},{i:'cloud',t:23},{i:'cloud-rain',t:20}]; let h=''; for(let i=6;i<=23;i++){ const m=ws[Math.floor(Math.random()*ws.length)]; h+=`<div class="weather-scroll-item flex flex-col items-center justify-center bg-stone-50 rounded-xl py-2 px-1 snap-start"><span class="text-[10px] text-stone-400 font-mono mb-1">${i}:00</span><i data-lucide="${m.i}" class="w-5 h-5 text-stone-600 mb-1"></i><span class="text-xs font-bold text-stone-800">${m.t}°</span></div>`; } document.getElementById('hourly-weather-container').innerHTML=h; }
 
@@ -1562,7 +1430,8 @@
 
         // Global State
         window.scheduleData = [];
-        // ... (rest of the script remains unchanged)
+        window.expenses = [];
+        window.companions = ["我"];
         
         // ...
         window.templateScheduleData = templateScheduleData;
@@ -1570,18 +1439,10 @@
         function initUI() {
             lucide.createIcons();
             generateHourlyWeather();
-            
-            // NEW: Handle input change dynamically
             document.getElementById('expense-amount').addEventListener('input', function(e) {
-                 const val = parseFloat(e.target.value) || 0;
-                 // Use the global window.exchangeRate for preview
-                 document.getElementById('input-hkd-preview').innerText = Math.round(val * window.exchangeRate);
+                 const val = parseInt(e.target.value) || 0;
+                 document.getElementById('input-hkd-preview').innerText = Math.round(val * EXCHANGE_RATE);
             });
-            
-            // NEW: Initial Currency Setup
-            setupCurrencySelector();
-            updateCurrencyUI(window.currentCurrency, window.exchangeRate);
-
             const today = new Date().toISOString().split('T')[0];
             document.getElementById('new-trip-date').value = today;
         }
