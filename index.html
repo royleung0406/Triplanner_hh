@@ -297,7 +297,8 @@
 
                     <div class="mb-6">
                         <div class="flex items-baseline gap-2">
-                            <span class="text-lg text-stone-400 font-bold">NT$</span>
+                            <!-- UPDATED CURRENCY DISPLAY -->
+                            <span class="text-lg text-stone-400 font-bold" id="total-currency-unit">NT$</span> 
                             <h2 class="text-5xl font-bold tracking-tighter font-mono" id="total-expense-twd">0</h2>
                         </div>
                         <p class="text-stone-400 text-sm mt-1 font-medium flex items-center gap-1">
@@ -315,10 +316,16 @@
                         記一筆
                     </h3>
 
+                    <!-- NEW CURRENCY SELECTOR -->
+                    <div class="flex items-center justify-between">
+                        <h4 class="text-xs text-stone-500 font-bold flex items-center gap-1"><i data-lucide="dollar-sign" class="w-3 h-3"></i> 選擇幣別</h4>
+                        <select id="expense-currency" onchange="window.handleCurrencyChange(this.value)" class="bg-white text-stone-700 text-sm font-bold px-3 py-1.5 rounded-lg border-none focus:ring-0 outline-none cursor-pointer shadow-sm"></select>
+                    </div>
+
                     <div class="bg-stone-50 rounded-2xl px-5 py-4 flex flex-col border border-transparent focus-within:border-[#433D3C] transition-all shadow-inner relative group">
-                        <label class="text-[10px] text-stone-400 font-bold mb-1 uppercase">金額 (TWD)</label>
+                        <label class="text-[10px] text-stone-400 font-bold mb-1 uppercase" id="expense-amount-label">金額 (TWD)</label>
                         <div class="flex items-baseline">
-                            <span class="text-stone-400 text-2xl mr-2 font-bold">$</span>
+                            <span class="text-stone-400 text-2xl mr-2 font-bold" id="input-currency-unit">$</span>
                             <input type="number" id="expense-amount" placeholder="0" class="flex-1 bg-transparent text-4xl focus:outline-none text-stone-800 font-mono font-bold placeholder-stone-200">
                         </div>
                         <div class="absolute right-4 top-1/2 -translate-y-1/2 text-stone-300 font-mono text-sm pointer-events-none group-focus-within:text-stone-400 transition-colors">
@@ -490,6 +497,17 @@
             isShared: false, // Is the trip currently being viewed/edited in the public collaborative path?
             creatorId: null, // The original creator's UID (only for shared trips)
             meta: {} // Stores the trip metadata (title, days, startDate)
+        };
+
+        // --- Currency State (NEW) ---
+        window.currentCurrency = 'TWD';
+        window.exchangeRate = 0.26; // TWD to HKD (initial default)
+        window.availableCurrencies = {
+            'TWD': { symbol: 'NT$', rateToHKD: 0.26, label: '台幣' },
+            'HKD': { symbol: 'HK$', rateToHKD: 1, label: '港幣' },
+            'USD': { symbol: '$', rateToHKD: 7.8, label: '美金' },
+            'JPY': { symbol: '¥', rateToHKD: 0.051, label: '日圓' },
+            'EUR': { symbol: '€', rateToHKD: 8.2, label: '歐元' }
         };
         
         // --- Firestore Path Helper ---
@@ -782,6 +800,7 @@
                             window.renderTimeline(window.currentDayIndex);
                         } else if(type === 'expenses') {
                             window.expenses = data;
+                            // NEW: Rerender expenses using the current exchange rate
                             window.renderExpenses();
                         } else if(type === 'companions') {
                             window.companions = data;
@@ -1042,8 +1061,74 @@
             modal.addEventListener('click', (e) => { if (e.target === modal) modal.remove(); });
         }
 
+        // --- Currency Logic (NEW/MODIFIED) ---
+        
+        function setupCurrencySelector() {
+            const selector = document.getElementById('expense-currency');
+            selector.innerHTML = Object.entries(window.availableCurrencies)
+                .map(([code, data]) => `<option value="${code}">${data.symbol} ${code} - ${data.label}</option>`)
+                .join('');
+            selector.value = window.currentCurrency;
+        }
 
-        // --- Other Logic (Kept as before, updated save calls to use global context) ---
+        // Simulated Exchange Rate Fetch (with exponential backoff structure)
+        async function fetchExchangeRateSimulated(fromCurrency, retries = 3, delay = 1000) {
+            // Simulate API call and delay
+            await new Promise(resolve => setTimeout(resolve, 300));
+            
+            const rate = window.availableCurrencies[fromCurrency]?.rateToHKD;
+
+            if (rate !== undefined) {
+                return rate;
+            } else {
+                // Simulated exponential backoff retry logic
+                if (retries > 0) {
+                    await new Promise(resolve => setTimeout(resolve, delay));
+                    return fetchExchangeRateSimulated(fromCurrency, retries - 1, delay * 2);
+                }
+                console.error(`Exchange rate for ${fromCurrency} not found.`);
+                return 0; // Return 0 if rate is unknown/fetch fails
+            }
+        }
+
+        window.handleCurrencyChange = async function(newCurrencyCode) {
+            if (newCurrencyCode === window.currentCurrency) return;
+            
+            showSyncing();
+            // Fetch rate (simulated)
+            const rate = await fetchExchangeRateSimulated(newCurrencyCode);
+            
+            if (rate > 0) {
+                window.currentCurrency = newCurrencyCode;
+                window.exchangeRate = rate;
+                updateCurrencyUI(newCurrencyCode, rate);
+                showSaved();
+            } else {
+                showError("無法取得最新匯率，請檢查網路。");
+                // Revert UI if fetch fails
+                document.getElementById('expense-currency').value = window.currentCurrency;
+            }
+        }
+
+        function updateCurrencyUI(currencyCode, rate) {
+            const data = window.availableCurrencies[currencyCode];
+            
+            // Update labels in budget view
+            document.getElementById('total-currency-unit').innerText = data.symbol;
+            
+            // Update labels in input form
+            document.getElementById('expense-amount-label').innerText = `金額 (${currencyCode})`;
+            document.getElementById('input-currency-unit').innerText = data.symbol;
+
+            // Trigger re-render of expenses to use new rate
+            window.renderExpenses(); 
+            
+            // Recalculate input HKD preview
+            const val = parseFloat(document.getElementById('expense-amount').value) || 0;
+            document.getElementById('input-hkd-preview').innerText = Math.round(val * rate);
+        }
+
+        // --- Other Logic (MODIFIED) ---
         
         // Load List UI (Same as before)
         window.renderTripListUI = function() {
@@ -1168,15 +1253,6 @@
         
         // --- Core Logic (Scheduled Data & Budgeting) ---
         
-        // Logic for rendering day selector, timeline, expenses, and modals remain largely the same, 
-        // as they rely on the global state (window.scheduleData, window.expenses) 
-        // and the save functions already use the new dynamic path logic.
-
-        // Initialize Call
-        initFirebase();
-        
-        // --- Remaining Helper Functions (No major changes required, just context) ---
-
         window.renderDaySelector = function() { 
             const c = document.getElementById('day-selector'); 
             if (!window.scheduleData || window.scheduleData.length === 0) {
@@ -1226,35 +1302,111 @@
         
         window.renderExpenses = function() {
             const list = document.getElementById('expense-list');
-            const totalTwdEl = document.getElementById('total-expense-twd');
+            // 'total-expense-twd' now represents the Total in the current selected currency
+            const totalSelectedCurrencyEl = document.getElementById('total-expense-twd'); 
             const totalHkdEl = document.getElementById('total-expense-hkd');
             const titleEl = document.getElementById('budget-title');
             const listStatusEl = document.getElementById('list-filter-status');
-            let displayExpenses = []; let totalTWD = 0;
             
+            let displayExpenses = []; 
+            let totalHKD = 0; // The canonical total is calculated in HKD
+
+            // Loop through all expenses to calculate total HKD
+            window.expenses.forEach(ex => {
+                const amount = ex.amount || 0;
+                // Use the saved rate (rateToHKD) for historical expenses, or fall back to current map if missing
+                const rate = ex.rateToHKD || window.availableCurrencies[ex.currency]?.rateToHKD || 0; 
+                totalHKD += amount * rate;
+            });
+            
+            // Apply filter logic
             if (window.currentFilter === 'ALL') { 
-                displayExpenses = window.expenses; titleEl.innerText = "總消費 (ALL)"; listStatusEl.innerText = "顯示全部"; 
-                totalTWD = window.expenses.reduce((sum, ex) => sum + parseInt(ex.amount), 0);
+                displayExpenses = window.expenses; 
+                titleEl.innerText = "總消費 (ALL)"; 
+                listStatusEl.innerText = "顯示全部"; 
             } else { 
-                titleEl.innerText = `個人消費 (${window.currentFilter})`; listStatusEl.innerText = `只顯示 ${window.currentFilter} 的分攤項目`; 
-                displayExpenses = window.expenses.filter(ex => { const sharers = ex.sharedBy && ex.sharedBy.length > 0 ? ex.sharedBy.length : 1; return sharers.includes(window.currentFilter); }); 
-                totalTWD = displayExpenses.reduce((sum, ex) => { const sharersCount = (ex.sharedBy && ex.sharedBy.length > 0) ? ex.sharedBy.length : 1; return sum + (parseInt(ex.amount) / sharersCount); }, 0); 
+                titleEl.innerText = `個人分攤 (${window.currentFilter})`; 
+                listStatusEl.innerText = `只顯示 ${window.currentFilter} 的分攤項目`; 
+                
+                // Filter and calculate personal share HKD
+                let personalHKDTotal = 0;
+                displayExpenses = window.expenses.filter(ex => { 
+                    const sharers = ex.sharedBy && ex.sharedBy.length > 0 ? ex.sharedBy : ["我"]; 
+                    if (sharers.includes(window.currentFilter)) {
+                        const amount = ex.amount || 0;
+                        const rate = ex.rateToHKD || window.availableCurrencies[ex.currency]?.rateToHKD || 0;
+                        const sharersCount = sharers.length;
+                        personalHKDTotal += (amount * rate / sharersCount);
+                        return true;
+                    }
+                    return false;
+                });
+                totalHKD = personalHKDTotal; // Override total for filtered view
             }
             
+            // Display totals
+            const selectedCurrencyTotal = totalHKD / window.exchangeRate; // Convert total HKD back to selected currency
+            totalSelectedCurrencyEl.innerText = Math.round(selectedCurrencyTotal).toLocaleString();
+            totalHkdEl.innerText = Math.round(totalHKD).toLocaleString();
+
+            // Render list items
             list.innerHTML = displayExpenses.map((ex, i) => {
-                const originalIndex = window.expenses.indexOf(ex);
-                const fullAmount = parseInt(ex.amount);
-                let displayAmount = fullAmount; let displayLabel = "總額"; let detailText = ""; let amountClass = "text-stone-800";
-                if (window.currentFilter !== 'ALL') { const sharersCount = (ex.sharedBy && ex.sharedBy.length > 0) ? ex.sharedBy.length : 1; displayAmount = fullAmount / sharersCount; displayLabel = "應付"; detailText = `(總額 $${fullAmount} ÷ ${sharersCount}人)`; amountClass = "text-blue-600"; }
-                const amountHKD = Math.round(displayAmount * EXCHANGE_RATE); const amountTWD = Math.round(displayAmount);
-                const payer = ex.payer || "我"; const sharedBy = ex.sharedBy || ["我"]; const shareText = sharedBy.length === window.companions.length ? "全員" : sharedBy.join(",");
-                return `<div class="flex flex-col bg-white p-4 rounded-[20px] shadow-sm border border-stone-100"><div class="flex justify-between items-start mb-2"><div><span class="text-base font-bold text-stone-700 block">${ex.item}</span><span class="text-[10px] text-stone-400">由 ${payer} 先付 • 分攤: ${shareText}</span></div><div class="text-right"><div class="text-[10px] text-stone-300 font-bold mb-0.5 text-right">${displayLabel}</div><div class="font-mono font-bold ${amountClass} text-lg">NT$ ${amountTWD}</div><div class="font-mono text-xs text-stone-400">≈ HK$ ${amountHKD}</div>${detailText ? `<div class="text-[10px] text-stone-400 mt-0.5">${detailText}</div>` : ''}</div></div><div class="flex justify-end border-t border-stone-50 pt-2 mt-1"><button onclick="deleteExpense(${originalIndex})" class="text-xs text-stone-300 hover:text-red-400 flex items-center gap-1 px-2 py-1 rounded tap-effect"><i data-lucide="trash-2" class="w-3 h-3"></i> 刪除</button></div></div>`;
+                const currencyData = window.availableCurrencies[ex.currency] || { symbol: '$', code: 'UNK' };
+                const amount = ex.amount || 0;
+                const rate = ex.rateToHKD || window.availableCurrencies[ex.currency]?.rateToHKD || 0; // Use saved rate
+                
+                let displayAmount = amount; 
+                let displayLabel = "總額"; 
+                let detailText = ""; 
+                let amountClass = "text-stone-800";
+
+                if (window.currentFilter !== 'ALL') { 
+                    const sharersCount = (ex.sharedBy && ex.sharedBy.length > 0) ? ex.sharedBy.length : 1; 
+                    displayAmount = amount / sharersCount; 
+                    displayLabel = "應付"; 
+                    detailText = `(總額 ${currencyData.symbol}${Math.round(amount)} ÷ ${sharersCount}人)`; 
+                    amountClass = "text-blue-600"; 
+                }
+                
+                const amountHKD = Math.round(displayAmount * rate); 
+                const amountDisplay = Math.round(displayAmount);
+                
+                const payer = ex.payer || "我"; 
+                const sharedBy = ex.sharedBy || ["我"]; 
+                const shareText = sharedBy.length === window.companions.length ? "全員" : sharedBy.join(",");
+
+                return `<div class="flex flex-col bg-white p-4 rounded-[20px] shadow-sm border border-stone-100"><div class="flex justify-between items-start mb-2"><div><span class="text-base font-bold text-stone-700 block">${ex.item}</span><span class="text-[10px] text-stone-400">由 ${payer} 先付 • 分攤: ${shareText}</span></div><div class="text-right"><div class="text-[10px] text-stone-300 font-bold mb-0.5 text-right">${displayLabel}</div><div class="font-mono font-bold ${amountClass} text-lg">${currencyData.symbol} ${amountDisplay}</div><div class="font-mono text-xs text-stone-400">≈ HK$ ${amountHKD}</div>${detailText ? `<div class="text-[10px] text-stone-400 mt-0.5">${detailText}</div>` : ''}</div></div><div class="flex justify-end border-t border-stone-50 pt-2 mt-1"><button onclick="deleteExpense(${i})" class="text-xs text-stone-300 hover:text-red-400 flex items-center gap-1 px-2 py-1 rounded tap-effect"><i data-lucide="trash-2" class="w-3 h-3"></i> 刪除</button></div></div>`;
             }).reverse().join('') || `<div class="text-center text-stone-300 text-sm py-8">沒有相關紀錄</div>`;
-            totalTwdEl.innerText = Math.round(totalTWD).toLocaleString(); totalHkdEl.innerText = Math.round(totalTWD * EXCHANGE_RATE).toLocaleString();
-            window.renderFilter(); lucide.createIcons();
+
+            window.renderFilter(); 
+            lucide.createIcons();
         }
 
-        window.addExpense = function() { const item = document.getElementById('expense-item').value; const amount = document.getElementById('expense-amount').value; const payer = document.getElementById('expense-payer').value; const shareBtns = document.querySelectorAll('.share-toggle-btn.share-btn-selected'); const sharedBy = Array.from(shareBtns).map(btn => btn.getAttribute('data-name')); if(!item || !amount) { window.showToast("請輸入項目和金額"); return; } if(sharedBy.length === 0) { window.showToast("請至少選擇一位分攤對象"); return; } window.expenses.push({ item, amount, payer, sharedBy }); document.getElementById('expense-item').value = ''; document.getElementById('expense-amount').value = ''; document.getElementById('input-hkd-preview').innerText = '0'; window.saveToFirestore('expenses', window.expenses); }
+        window.addExpense = function() { 
+            const item = document.getElementById('expense-item').value; 
+            const amount = document.getElementById('expense-amount').value; 
+            const payer = document.getElementById('expense-payer').value; 
+            const shareBtns = document.querySelectorAll('.share-toggle-btn.share-btn-selected'); 
+            const sharedBy = Array.from(shareBtns).map(btn => btn.getAttribute('data-name')); 
+            
+            if(!item || !amount) { window.showToast("請輸入項目和金額"); return; } 
+            if(sharedBy.length === 0) { window.showToast("請至少選擇一位分攤對象"); return; } 
+            
+            window.expenses.push({ 
+                item, 
+                amount: parseFloat(amount), // Save as number
+                payer, 
+                sharedBy,
+                currency: window.currentCurrency, // Save currency code
+                rateToHKD: window.exchangeRate // Save rate at time of expense
+            }); 
+            
+            document.getElementById('expense-item').value = ''; 
+            document.getElementById('expense-amount').value = '';
+            document.getElementById('input-hkd-preview').innerText = '0'; 
+            window.saveToFirestore('expenses', window.expenses); 
+        }
+
         window.deleteExpense = function(index) { showCustomConfirm('確定刪除這筆紀錄？', () => { window.expenses.splice(index, 1); window.saveToFirestore('expenses', window.expenses); }); }
         
         window.promptAddCompanion = function() { const name = prompt("請輸入旅伴名字："); if (name && name.trim() !== "") { if (!window.companions.includes(name.trim())) { window.companions.push(name.trim()); window.saveToFirestore('companions', window.companions); } else { window.showToast("已經在名單內囉！"); } } }
@@ -1319,7 +1471,26 @@
             window.renderDaySelector(); window.renderTimeline(0); closeDateModal();
         }
 
-        window.switchTab = function(tabId) { document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden')); document.getElementById(`view-${tabId}`).classList.remove('hidden'); ['schedule', 'info', 'budget'].forEach(id => { const btn = document.getElementById(`tab-${id}`); const span = btn.querySelector('span'); if(id === tabId) { btn.className = "active-tab flex items-center gap-2 px-5 py-3 tap-effect transition-all duration-300"; span.classList.remove('hidden'); } else { btn.className = "inactive-tab flex items-center gap-2 px-3 py-3 tap-effect transition-all duration-300"; span.classList.add('hidden'); } }); }
+        window.switchTab = function(tabId) { 
+            document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden')); 
+            document.getElementById(`view-${tabId}`).classList.remove('hidden'); 
+            ['schedule', 'info', 'budget'].forEach(id => { 
+                const btn = document.getElementById(`tab-${id}`); 
+                const span = btn.querySelector('span'); 
+                if(id === tabId) { 
+                    btn.className = "active-tab flex items-center gap-2 px-5 py-3 tap-effect transition-all duration-300"; 
+                    span.classList.remove('hidden'); 
+                    // NEW: Ensure currency UI is initialized when switching to budget tab
+                    if (id === 'budget') {
+                        setupCurrencySelector();
+                        updateCurrencyUI(window.currentCurrency, window.exchangeRate);
+                    }
+                } else { 
+                    btn.className = "inactive-tab flex items-center gap-2 px-3 py-3 tap-effect transition-all duration-300"; 
+                    span.classList.add('hidden'); 
+                } 
+            }); 
+        }
 
         function generateHourlyWeather() { const ws = [{i:'sun',t:22},{i:'cloud-sun',t:24},{i:'cloud',t:23},{i:'cloud-rain',t:20}]; let h=''; for(let i=6;i<=23;i++){ const m=ws[Math.floor(Math.random()*ws.length)]; h+=`<div class="weather-scroll-item flex flex-col items-center justify-center bg-stone-50 rounded-xl py-2 px-1 snap-start"><span class="text-[10px] text-stone-400 font-mono mb-1">${i}:00</span><i data-lucide="${m.i}" class="w-5 h-5 text-stone-600 mb-1"></i><span class="text-xs font-bold text-stone-800">${m.t}°</span></div>`; } document.getElementById('hourly-weather-container').innerHTML=h; }
 
@@ -1378,10 +1549,18 @@
         function initUI() {
             lucide.createIcons();
             generateHourlyWeather();
+            
+            // NEW: Handle input change dynamically
             document.getElementById('expense-amount').addEventListener('input', function(e) {
-                 const val = parseInt(e.target.value) || 0;
-                 document.getElementById('input-hkd-preview').innerText = Math.round(val * EXCHANGE_RATE);
+                 const val = parseFloat(e.target.value) || 0;
+                 // Use the global window.exchangeRate for preview
+                 document.getElementById('input-hkd-preview').innerText = Math.round(val * window.exchangeRate);
             });
+            
+            // NEW: Initial Currency Setup
+            setupCurrencySelector();
+            updateCurrencyUI(window.currentCurrency, window.exchangeRate);
+
             const today = new Date().toISOString().split('T')[0];
             document.getElementById('new-trip-date').value = today;
         }
