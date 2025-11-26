@@ -615,13 +615,12 @@
                         
                         if (sharedTripId) {
                             await loadSharedTrip(sharedTripId);
-                        } else {
-                            // Only load trip list if not viewing a shared trip via URL
-                            loadTripList(user.uid);
-                            // Ensure we start in the correct view
-                            document.getElementById('view-trip-list').classList.add('page-active');
-                            document.getElementById('view-trip-detail').classList.add('page-hidden');
+                            // If shared trip is loaded, we skip loadTripList/routing below
+                            return;
                         }
+
+                        // Load trip list and handle private deep-linking inside the snapshot listener
+                        loadTripList(user.uid);
                     } else {
                         // If user logs out or no token, sign in anonymously for immediate usage/sharing
                         await signInAnonymously(auth);
@@ -681,17 +680,38 @@
             lucide.createIcons();
         }
 
-        // 5. Load Trip List (Same as before)
+        // 5. Load Trip List (Modified to handle private deep-linking)
         function loadTripList(uid) {
             const indexRef = doc(db, 'artifacts', appId, 'users', uid, 'travel_data', 'trips_index');
             
             onSnapshot(indexRef, (docSnap) => {
+                const urlParams = new URLSearchParams(window.location.search);
+                const privateTripId = urlParams.get('id'); // NEW: Check for private ID
+
                 if (docSnap.exists()) {
                     window.tripsList = docSnap.data().items || [];
                 } else {
                     window.tripsList = [];
                 }
                 window.renderTripListUI();
+
+                // Check for private deep link ONLY on initial load when currentTrip is null
+                if (window.currentTrip.id === null && privateTripId) {
+                    const trip = window.tripsList.find(t => t.id === privateTripId);
+                    if (trip) {
+                        openTrip(privateTripId);
+                        return;
+                    } else {
+                        // Trip ID in URL, but not in user's list. Clear the URL.
+                         history.pushState(null, '', window.location.pathname);
+                    }
+                }
+                
+                // Ensure default view (trip list) is active if no trip is loaded
+                if (window.currentTrip.id === null) {
+                    document.getElementById('view-trip-list').classList.add('page-active');
+                    document.getElementById('view-trip-detail').classList.add('page-hidden');
+                }
             });
         }
         
@@ -717,6 +737,9 @@
                 meta: meta
             };
             
+            // Update URL to reflect the shared ID
+            history.pushState(null, '', `${window.location.pathname}?share=${sharedTripId}`);
+
             // Update UI
             document.getElementById('header-title').innerText = meta.title;
             document.getElementById('header-subtitle').innerText = "SHARED TRIP";
@@ -786,6 +809,7 @@
             });
         }
         
+        // Modified to update URL with ?id={tripId} or ?share={tripId}
         window.openTrip = function(tripId) {
             const trip = window.tripsList.find(t => t.id === tripId);
             if (!trip) return;
@@ -809,8 +833,12 @@
             
             // 3. Start Listeners
             window.startTripListeners(tripId);
+
+            // 4. Update URL for deep linking (New Logic)
+            const urlParam = trip.isShared ? `share=${tripId}` : `id=${tripId}`;
+            history.pushState(null, '', `${window.location.pathname}?${urlParam}`);
             
-            // 4. Switch View
+            // 5. Switch View
             document.getElementById('view-trip-list').classList.remove('page-active');
             document.getElementById('view-trip-list').classList.add('page-hidden');
             document.getElementById('view-trip-detail').classList.remove('page-hidden');
@@ -895,6 +923,9 @@
             window.currentTrip.meta = sharedMeta;
             window.currentTrip.sharedId = tripId;
             renderShareLink(tripId);
+            
+            // Crucial: Update URL to reflect the new shared state
+            history.pushState(null, '', `${window.location.pathname}?share=${tripId}`);
         }
 
         function renderShareLink(tripId) {
