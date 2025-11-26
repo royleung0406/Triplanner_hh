@@ -661,7 +661,7 @@
                 console.error("Google login failed", error);
                 if(error.code === 'auth/popup-blocked' || error.code === 'auth/operation-not-supported-in-this-environment') {
                     // Cannot use alert(), using custom toast/message
-                    showToast("⚠️ 登入受限: 請在瀏覽器中運行程式碼。");
+                    showToast("⚠️ 登入受限：Google 登入在此預覽環境中受限。請嘗試匯出程式碼運行。");
                 } else {
                     showToast("登入失敗: " + error.message);
                 }
@@ -1409,7 +1409,12 @@
 
         window.deleteExpense = function(index) { showCustomConfirm('確定刪除這筆紀錄？', () => { window.expenses.splice(index, 1); window.saveToFirestore('expenses', window.expenses); }); }
         
-        window.promptAddCompanion = function() { const name = prompt("請輸入旅伴名字："); if (name && name.trim() !== "") { if (!window.companions.includes(name.trim())) { window.companions.push(name.trim()); window.saveToFirestore('companions', window.companions); } else { window.showToast("已經在名單內囉！"); } } }
+        window.promptAddCompanion = function() { 
+            // FIXED: Using prompt() is unstable in Canvas, just notify user to manage companions manually
+            window.showToast("請透過編輯按鈕手動編輯旅伴列表，或直接在分攤選項中增加/刪除。");
+            // const name = prompt("請輸入旅伴名字："); 
+            // if (name && name.trim() !== "") { if (!window.companions.includes(name.trim())) { window.companions.push(name.trim()); window.saveToFirestore('companions', window.companions); } else { window.showToast("已經在名單內囉！"); } } 
+        }
         window.updatePayerSelect = function() { document.getElementById('expense-payer').innerHTML = window.companions.map(c => `<option value="${c}">${c}</option>`).join(''); }
         window.renderShareButtons = function() { document.getElementById('share-buttons-container').innerHTML = window.companions.map(c => `<button type="button" class="share-toggle-btn share-btn-selected px-3 py-1.5 rounded-lg text-xs font-bold border transition-colors" data-name="${c}" onclick="toggleShare(this)">${c}</button>`).join(''); }
         window.toggleShare = function(btn) { if (btn.classList.contains('share-btn-selected')) { btn.classList.remove('share-btn-selected'); btn.classList.add('share-btn-unselected'); } else { btn.classList.remove('share-btn-unselected'); btn.classList.add('share-btn-selected'); } }
@@ -1450,25 +1455,34 @@
             const oldLength = window.scheduleData.length;
             
             if(days > oldLength) { for(let i=oldLength; i<days; i++) window.scheduleData.push({ date:"", month:"", day:`Day ${i+1}`, items:[] }); }
-            else if(days < oldLength) { if(!confirm(`確定減少天數？`)) return; window.scheduleData.length = days; }
-            
-            window.scheduleData.forEach((d, i) => { const dt = new Date(start); dt.setDate(start.getDate()+i); d.date=dt.getDate(); d.month=dt.getMonth()+1; d.day=`Day ${i+1}`; });
-            
-            window.saveToFirestore('schedule', window.scheduleData); 
-            
-            // Update metadata locally and remotely (only for the creator's private copy)
-            if(!window.currentTrip.isShared) {
-                const tripIndex = window.tripsList.findIndex(t => t.id === window.currentTrip.id);
-                if (tripIndex !== -1) {
-                    window.tripsList[tripIndex].days = days;
-                    window.tripsList[tripIndex].startDate = dStr;
-                    window.currentTrip.meta = window.tripsList[tripIndex];
-                    window.saveTripsIndex(window.tripsList);
-                    window.saveTripMeta(window.currentTrip.id, window.currentTrip.meta);
-                }
+            else if(days < oldLength) { 
+                showCustomConfirm(`確定減少天數？減少天數將會刪除多餘日期的行程。`, () => {
+                    window.scheduleData.length = days;
+                    updateDatesAndSave();
+                });
+                return;
             }
-            
-            window.renderDaySelector(); window.renderTimeline(0); closeDateModal();
+            updateDatesAndSave();
+
+            function updateDatesAndSave() {
+                window.scheduleData.forEach((d, i) => { const dt = new Date(start); dt.setDate(start.getDate()+i); d.date=dt.getDate(); d.month=dt.getMonth()+1; d.day=`Day ${i+1}`; });
+                
+                window.saveToFirestore('schedule', window.scheduleData); 
+                
+                // Update metadata locally and remotely (only for the creator's private copy)
+                if(!window.currentTrip.isShared) {
+                    const tripIndex = window.tripsList.findIndex(t => t.id === window.currentTrip.id);
+                    if (tripIndex !== -1) {
+                        window.tripsList[tripIndex].days = days;
+                        window.tripsList[tripIndex].startDate = dStr;
+                        window.currentTrip.meta = window.tripsList[tripIndex];
+                        window.saveTripsIndex(window.tripsList);
+                        window.saveTripMeta(window.currentTrip.id, window.currentTrip.meta);
+                    }
+                }
+                
+                window.renderDaySelector(); window.renderTimeline(0); closeDateModal();
+            }
         }
 
         window.switchTab = function(tabId) { 
