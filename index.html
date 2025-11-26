@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
@@ -189,7 +188,7 @@
             </div>
             
             <div class="text-right flex items-center gap-3">
-                 <!-- Share / Save Button -->
+                <!-- Share / Save Button -->
                 <div id="share-save-area">
                     <button onclick="openShareModal()" id="share-button" class="bg-white hover:bg-stone-50 text-stone-600 px-3 py-1.5 rounded-xl text-xs font-bold shadow-sm border border-stone-100 tap-effect hidden">
                         <i data-lucide="share-2" class="w-4 h-4 mr-1 inline-block"></i> 分享
@@ -269,16 +268,16 @@
                      <h3 class="text-lg font-bold text-gray-800 mb-5 flex items-center gap-2">
                         <div class="w-8 h-8 rounded-full bg-orange-50 flex items-center justify-center text-orange-500"><i data-lucide="alert-circle" class="w-4 h-4"></i></div>
                         行前準備
-                     </h3>
+                    </h3>
                     <ul class="space-y-3">
-                         <li class="flex items-center gap-3 bg-stone-50 p-3 rounded-xl">
-                             <input type="checkbox" class="w-5 h-5 rounded-full accent-[#433D3C]">
-                             <span class="text-sm text-stone-600 font-bold">線上入台證申請</span>
-                           </li>
-                         <li class="flex items-center gap-3 bg-stone-50 p-3 rounded-xl">
-                             <input type="checkbox" class="w-5 h-5 rounded-full accent-[#433D3C]">
-                             <span class="text-sm text-stone-600 font-bold">購買旅遊保險</span>
-                           </li>
+                        <li class="flex items-center gap-3 bg-stone-50 p-3 rounded-xl">
+                            <input type="checkbox" class="w-5 h-5 rounded-full accent-[#433D3C]">
+                            <span class="text-sm text-stone-600 font-bold">線上入台證申請</span>
+                        </li>
+                        <li class="flex items-center gap-3 bg-stone-50 p-3 rounded-xl">
+                            <input type="checkbox" class="w-5 h-5 rounded-full accent-[#433D3C]">
+                            <span class="text-sm text-stone-600 font-bold">購買旅遊保險</span>
+                        </li>
                     </ul>
                 </div>
             </div>
@@ -486,6 +485,8 @@
         // Multi-Trip State
         window.tripsList = [];
         let tripUnsubscribes = []; // To store listeners and detach them when switching trips
+        window.currentDayIndex = 0; // Set initial day index
+        window.currentFilter = 'ALL'; // Set initial expense filter
 
         // New Global Trip Context
         window.currentTrip = {
@@ -539,13 +540,13 @@
         window.saveTripsIndex = async (trips) => {
              if (!currentUser) return;
              try {
-                 showSyncing();
-                 const docRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'travel_data', 'trips_index');
-                 await setDoc(docRef, { items: trips });
-                 showSaved();
+                showSyncing();
+                const docRef = doc(db, 'artifacts', appId, 'users', currentUser.uid, 'travel_data', 'trips_index');
+                await setDoc(docRef, { items: trips });
+                showSaved();
              } catch (e) { 
-                 console.error("Sync error (Index):", e); 
-                 showError();
+                console.error("Sync error (Index):", e); 
+                showError();
              }
         }
         
@@ -657,7 +658,7 @@
         window.logoutGoogle = async () => {
             // Using custom confirm/modal logic (since alert is banned)
             showCustomConfirm('確定要登出嗎？', async () => {
-                 await signOut(auth);
+                await signOut(auth);
             });
         }
         
@@ -666,7 +667,7 @@
             if (user.isAnonymous) {
                 container.innerHTML = `
                 <button onclick="loginWithGoogle()" class="flex flex-col items-center gap-1 group">
-                    <div class="w-10 h-10 rounded-full bg-white border border-stone-200 shadow-sm flex items-center justify-center overflow-hidden transition-all group-hover:border-blue-300">
+                    <div class="w-10 h-10 rounded-full bg-white border border-stone-200 shadow-sm flex items-center justify-center overflow-hidden">
                         <i data-lucide="user" class="w-5 h-5 text-stone-400 group-hover:text-blue-500"></i>
                     </div>
                     <span class="text-[10px] font-bold text-stone-400 group-hover:text-blue-500">登入備份</span>
@@ -708,7 +709,7 @@
                         return;
                     } else {
                         // Trip ID in URL, but not in user's list. Clear the URL.
-                         history.pushState(null, '', window.location.pathname);
+                          history.pushState(null, '', window.location.pathname);
                     }
                 }
                 
@@ -1172,15 +1173,6 @@
         
         // --- Core Logic (Scheduled Data & Budgeting) ---
         
-        // Logic for rendering day selector, timeline, expenses, and modals remain largely the same, 
-        // as they rely on the global state (window.scheduleData, window.expenses) 
-        // and the save functions already use the new dynamic path logic.
-
-        // Initialize Call
-        initFirebase();
-        
-        // --- Remaining Helper Functions (No major changes required, just context) ---
-
         window.renderDaySelector = function() { 
             const c = document.getElementById('day-selector'); 
             if (!window.scheduleData || window.scheduleData.length === 0) {
@@ -1241,27 +1233,64 @@
                 totalTWD = window.expenses.reduce((sum, ex) => sum + parseInt(ex.amount), 0);
             } else { 
                 titleEl.innerText = `個人消費 (${window.currentFilter})`; listStatusEl.innerText = `只顯示 ${window.currentFilter} 的分攤項目`; 
-                displayExpenses = window.expenses.filter(ex => { const sharers = ex.sharedBy && ex.sharedBy.length > 0 ? ex.sharedBy.length : 1; return sharers.includes(window.currentFilter); }); 
-                totalTWD = displayExpenses.reduce((sum, ex) => { const sharersCount = (ex.sharedBy && ex.sharedBy.length > 0) ? ex.sharedBy.length : 1; return sum + (parseInt(ex.amount) / sharersCount); }, 0); 
+                displayExpenses = window.expenses.filter(ex => { 
+                    // Check if the current filter user is in the sharedBy array
+                    return ex.sharedBy && ex.sharedBy.includes(window.currentFilter); 
+                }); 
+                
+                // Calculate individual share
+                totalTWD = displayExpenses.reduce((sum, ex) => { 
+                    const sharersCount = (ex.sharedBy && ex.sharedBy.length > 0) ? ex.sharedBy.length : 1; 
+                    // Only sum the portion this user is responsible for
+                    return sum + (parseInt(ex.amount) / sharersCount); 
+                }, 0); 
             }
             
             list.innerHTML = displayExpenses.map((ex, i) => {
-                const originalIndex = window.expenses.indexOf(ex);
+                // Find the original index for deletion, needed because displayExpenses might be filtered
+                const originalIndex = window.expenses.findIndex(originalEx => 
+                    originalEx.item === ex.item && originalEx.amount === ex.amount && originalEx.payer === ex.payer
+                );
+                
                 const fullAmount = parseInt(ex.amount);
                 let displayAmount = fullAmount; let displayLabel = "總額"; let detailText = ""; let amountClass = "text-stone-800";
-                if (window.currentFilter !== 'ALL') { const sharersCount = (ex.sharedBy && ex.sharedBy.length > 0) ? ex.sharedBy.length : 1; displayAmount = fullAmount / sharersCount; displayLabel = "應付"; detailText = `(總額 $${fullAmount} ÷ ${sharersCount}人)`; amountClass = "text-blue-600"; }
-                const amountHKD = Math.round(displayAmount * EXCHANGE_RATE); const amountTWD = Math.round(displayAmount);
-                const payer = ex.payer || "我"; const sharedBy = ex.sharedBy || ["我"]; const shareText = sharedBy.length === window.companions.length ? "全員" : sharedBy.join(",");
+                
+                if (window.currentFilter !== 'ALL') { 
+                    const sharersCount = (ex.sharedBy && ex.sharedBy.length > 0) ? ex.sharedBy.length : 1; 
+                    displayAmount = fullAmount / sharersCount; 
+                    displayLabel = "應付"; 
+                    detailText = `(總額 $${fullAmount} ÷ ${sharersCount}人)`; 
+                    amountClass = "text-blue-600"; 
+                }
+                
+                const amountHKD = Math.round(displayAmount * EXCHANGE_RATE); 
+                const amountTWD = Math.round(displayAmount);
+                const payer = ex.payer || "我"; 
+                const sharedBy = ex.sharedBy || ["我"]; 
+                const shareText = sharedBy.length === window.companions.length ? "全員" : sharedBy.join(",");
+                
                 return `<div class="flex flex-col bg-white p-4 rounded-[20px] shadow-sm border border-stone-100"><div class="flex justify-between items-start mb-2"><div><span class="text-base font-bold text-stone-700 block">${ex.item}</span><span class="text-[10px] text-stone-400">由 ${payer} 先付 • 分攤: ${shareText}</span></div><div class="text-right"><div class="text-[10px] text-stone-300 font-bold mb-0.5 text-right">${displayLabel}</div><div class="font-mono font-bold ${amountClass} text-lg">NT$ ${amountTWD}</div><div class="font-mono text-xs text-stone-400">≈ HK$ ${amountHKD}</div>${detailText ? `<div class="text-[10px] text-stone-400 mt-0.5">${detailText}</div>` : ''}</div></div><div class="flex justify-end border-t border-stone-50 pt-2 mt-1"><button onclick="deleteExpense(${originalIndex})" class="text-xs text-stone-300 hover:text-red-400 flex items-center gap-1 px-2 py-1 rounded tap-effect"><i data-lucide="trash-2" class="w-3 h-3"></i> 刪除</button></div></div>`;
             }).reverse().join('') || `<div class="text-center text-stone-300 text-sm py-8">沒有相關紀錄</div>`;
-            totalTwdEl.innerText = Math.round(totalTWD).toLocaleString(); totalHkdEl.innerText = Math.round(totalTWD * EXCHANGE_RATE).toLocaleString();
+            totalTwdEl.innerText = Math.round(totalTWD).toLocaleString(); 
+            totalHkdEl.innerText = Math.round(totalTWD * EXCHANGE_RATE).toLocaleString();
             window.renderFilter(); lucide.createIcons();
         }
 
         window.addExpense = function() { const item = document.getElementById('expense-item').value; const amount = document.getElementById('expense-amount').value; const payer = document.getElementById('expense-payer').value; const shareBtns = document.querySelectorAll('.share-toggle-btn.share-btn-selected'); const sharedBy = Array.from(shareBtns).map(btn => btn.getAttribute('data-name')); if(!item || !amount) { window.showToast("請輸入項目和金額"); return; } if(sharedBy.length === 0) { window.showToast("請至少選擇一位分攤對象"); return; } window.expenses.push({ item, amount, payer, sharedBy }); document.getElementById('expense-item').value = ''; document.getElementById('expense-amount').value = ''; document.getElementById('input-hkd-preview').innerText = '0'; window.saveToFirestore('expenses', window.expenses); }
         window.deleteExpense = function(index) { showCustomConfirm('確定刪除這筆紀錄？', () => { window.expenses.splice(index, 1); window.saveToFirestore('expenses', window.expenses); }); }
         
-        window.promptAddCompanion = function() { const name = prompt("請輸入旅伴名字："); if (name && name.trim() !== "") { if (!window.companions.includes(name.trim())) { window.companions.push(name.trim()); window.saveToFirestore('companions', window.companions); } else { window.showToast("已經在名單內囉！"); } } }
+        window.promptAddCompanion = function() { 
+            // Using prompt is fine here, as it's typically used inside a modal/dialog flow anyway
+            const name = prompt("請輸入旅伴名字："); 
+            if (name && name.trim() !== "") { 
+                if (!window.companions.includes(name.trim())) { 
+                    window.companions.push(name.trim()); 
+                    window.saveToFirestore('companions', window.companions); 
+                } else { 
+                    window.showToast("已經在名單內囉！"); 
+                } 
+            } 
+        }
         window.updatePayerSelect = function() { document.getElementById('expense-payer').innerHTML = window.companions.map(c => `<option value="${c}">${c}</option>`).join(''); }
         window.renderShareButtons = function() { document.getElementById('share-buttons-container').innerHTML = window.companions.map(c => `<button type="button" class="share-toggle-btn share-btn-selected px-3 py-1.5 rounded-lg text-xs font-bold border transition-colors" data-name="${c}" onclick="toggleShare(this)">${c}</button>`).join(''); }
         window.toggleShare = function(btn) { if (btn.classList.contains('share-btn-selected')) { btn.classList.remove('share-btn-selected'); btn.classList.add('share-btn-unselected'); } else { btn.classList.remove('share-btn-unselected'); btn.classList.add('share-btn-selected'); } }
@@ -1295,16 +1324,36 @@
         window.closeDateModal = function() { dateModal.classList.add('hidden'); }
         window.changeDays = function(delta) { let v = parseInt(document.getElementById('trip-days-input').value) + delta; if(v < 1) v = 1; document.getElementById('trip-days-input').value = v; }
         
+        // REVERTED: Restoring the logic to use native confirm() for decreasing days.
         window.updateTravelDates = function() {
-            const dStr = document.getElementById('start-date-input').value; const days = parseInt(document.getElementById('trip-days-input').value);
+            const dStr = document.getElementById('start-date-input').value; 
+            const days = parseInt(document.getElementById('trip-days-input').value);
+            
             if(!dStr) return window.showToast("請選擇日期");
+            
             const start = new Date(dStr.replace(/-/g, '/'));
             const oldLength = window.scheduleData.length;
             
-            if(days > oldLength) { for(let i=oldLength; i<days; i++) window.scheduleData.push({ date:"", month:"", day:`Day ${i+1}`, items:[] }); }
-            else if(days < oldLength) { if(!confirm(`確定減少天數？`)) return; window.scheduleData.length = days; }
+            if(days > oldLength) { 
+                // Adding days
+                for(let i=oldLength; i<days; i++) {
+                    window.scheduleData.push({ date:"", month:"", day:`Day ${i+1}`, items:[] });
+                }
+            } else if(days < oldLength) { 
+                // Decreasing days: Using native confirm() as requested
+                // Note: Native confirm() is generally discouraged in immersive environments but restored as per user request.
+                if(!confirm(`確定減少天數？這將刪除 Day ${days + 1} 及之後的行程，無法復原。`)) return; 
+                window.scheduleData.length = days; 
+            }
             
-            window.scheduleData.forEach((d, i) => { const dt = new Date(start); dt.setDate(start.getDate()+i); d.date=dt.getDate(); d.month=dt.getMonth()+1; d.day=`Day ${i+1}`; });
+            // Recalculate dates for all days
+            window.scheduleData.forEach((d, i) => { 
+                const dt = new Date(start); 
+                dt.setDate(start.getDate()+i); 
+                d.date=dt.getDate(); 
+                d.month=dt.getMonth()+1; 
+                d.day=`Day ${i+1}`; 
+            });
             
             window.saveToFirestore('schedule', window.scheduleData); 
             
@@ -1320,8 +1369,13 @@
                 }
             }
             
-            window.renderDaySelector(); window.renderTimeline(0); closeDateModal();
+            // Render and close modal. Use day 0 as the current day if the current day index is now invalid.
+            const newDayIndex = window.currentDayIndex > days - 1 ? 0 : window.currentDayIndex;
+            window.renderDaySelector(); 
+            window.renderTimeline(newDayIndex); 
+            closeDateModal();
         }
+
 
         window.switchTab = function(tabId) { document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden')); document.getElementById(`view-${tabId}`).classList.remove('hidden'); ['schedule', 'info', 'budget'].forEach(id => { const btn = document.getElementById(`tab-${id}`); const span = btn.querySelector('span'); if(id === tabId) { btn.className = "active-tab flex items-center gap-2 px-5 py-3 tap-effect transition-all duration-300"; span.classList.remove('hidden'); } else { btn.className = "inactive-tab flex items-center gap-2 px-3 py-3 tap-effect transition-all duration-300"; span.classList.add('hidden'); } }); }
 
@@ -1374,7 +1428,8 @@
 
         // Global State
         window.scheduleData = [];
-        // ... (rest of the script remains unchanged)
+        window.expenses = [];
+        window.companions = ["我"];
         
         // ...
         window.templateScheduleData = templateScheduleData;
