@@ -290,18 +290,28 @@
                     
                     <div class="flex justify-between items-start mb-4">
                         <p class="text-stone-400 text-xs font-medium tracking-wide uppercase" id="budget-title">總消費 (ALL)</p>
-                        <button onclick="promptAddCompanion()" class="bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-full text-[10px] flex items-center gap-1 backdrop-blur-sm transition-colors">
-                            <i data-lucide="user-plus" class="w-3 h-3"></i> 管理旅伴
+                        <div class="flex gap-2">
+                            <!-- 新增：貨幣設定 -->
+                        <button onclick="openCurrencySettings()" class="bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-full text-[10px] flex items-center gap-1 backdrop-blur-sm transition-colors">
+                            <i data-lucide="coins" class="w-3 h-3"></i> 貨幣設定
+                        </button>
+                         <button onclick="promptAddCompanion()" class="bg-white/10 hover:bg-white/20 px-3 py-1.5 rounded-full text-[10px] flex items-center gap-1 backdrop-blur-sm transition-colors">
+                             <i data-lucide="user-plus" class="w-3 h-3"></i> 管理旅伴
                         </button>
                     </div>
-
+                </div>
                     <div class="mb-6">
                         <div class="flex items-baseline gap-2">
-                            <span class="text-lg text-stone-400 font-bold">NT$</span>
-                            <h2 class="text-5xl font-bold tracking-tighter font-mono" id="total-expense-twd">0</h2>
+                            <span class="text-lg text-stone-400 font-bold">
+                                <span id="main-currency-code-prefix">NT$</span>
+                            </span>
+                            <h2 class="text-5xl font-bold tracking-tighter font-mono" id="total-expense-main">0</h2>
                         </div>
                         <p class="text-stone-400 text-sm mt-1 font-medium flex items-center gap-1">
-                            <span class="bg-white/10 px-2 py-0.5 rounded text-xs">約 HK$ <span id="total-expense-hkd" class="font-mono">0</span></span>
+                            <span class="bg-white/10 px-2 py-0.5 rounded text-xs">
+                                約 <span id="secondary-currency-code">HK$</span>
+                                <span id="total-expense-secondary" class="font-mono">0</span>
+                            </span>
                         </p>
                     </div>
 
@@ -316,15 +326,19 @@
                     </h3>
 
                     <div class="bg-stone-50 rounded-2xl px-5 py-4 flex flex-col border border-transparent focus-within:border-[#433D3C] transition-all shadow-inner relative group">
-                        <label class="text-[10px] text-stone-400 font-bold mb-1 uppercase">金額 (TWD)</label>
+                        <label class="text-[10px] text-stone-400 font-bold mb-1 uppercase">
+                            金額 (<span id="input-main-currency-code">TWD</span>)
+                        </label>
                         <div class="flex items-baseline">
-                            <span class="text-stone-400 text-2xl mr-2 font-bold">$</span>
+                            <span id="input-main-currency-symbol" class="text-stone-400 text-2xl mr-2 font-bold">$</span>
                             <input type="number" id="expense-amount" placeholder="0" class="flex-1 bg-transparent text-4xl focus:outline-none text-stone-800 font-mono font-bold placeholder-stone-200">
                         </div>
                         <div class="absolute right-4 top-1/2 -translate-y-1/2 text-stone-300 font-mono text-sm pointer-events-none group-focus-within:text-stone-400 transition-colors">
-                            ≈ HK$ <span id="input-hkd-preview">0</span>
+                            ≈ <span id="input-secondary-currency-code">HK$</span>
+                            <span id="input-secondary-preview">0</span>
                         </div>
                     </div>
+
 
                     <div class="bg-stone-50 rounded-2xl px-4 py-3 flex items-center gap-2 border border-transparent focus-within:border-stone-200 transition-colors">
                         <input type="text" id="expense-item" placeholder="消費項目 (例如: 晚餐、車費)" class="flex-1 bg-transparent text-base focus:outline-none text-stone-700 placeholder-stone-400 font-medium">
@@ -471,7 +485,91 @@
             appId: "1:1063667328708:web:d2ae7acd304e589b790b91"
         };
         // 匯率常數：TWD → HKD
-        const EXCHANGE_RATE = 0.26;
+        // 全局貨幣設定（主貨幣 + 副顯示貨幣）
+window.currencySettings = {
+    main: 'TWD',          // 主貨幣（用來輸入 & 儲存）
+    mainSymbol: 'NT$',    // 主貨幣符號
+    secondary: 'HKD',     // 副貨幣（只用來顯示估算，可空白）
+    secondarySymbol: 'HK$', // 副貨幣符號
+    rate: 0.25            // 匯率：1 main = rate secondary （例：1 TWD = 0.25 HKD）
+};
+
+// 猜貨幣符號
+function guessCurrencySymbol(code) {
+    const c = (code || '').toUpperCase();
+    switch (c) {
+        case 'TWD': return 'NT$';
+        case 'HKD': return 'HK$';
+        case 'JPY': return '¥';
+        case 'CNY': return '¥';
+        case 'USD': return '$';
+        case 'EUR': return '€';
+        default:    return c;
+    }
+}
+
+// 更新畫面上所有貨幣 label
+function updateCurrencyUI() {
+    const s = window.currencySettings;
+
+    const mainCodeEl = document.getElementById('input-main-currency-code');
+    const mainSymbolEl = document.getElementById('input-main-currency-symbol');
+    const secCodeEl = document.getElementById('input-secondary-currency-code');
+
+    const totalMainCodeEl = document.getElementById('main-currency-code-prefix');
+    const totalSecCodeEl = document.getElementById('secondary-currency-code');
+
+    if (mainCodeEl) mainCodeEl.textContent = s.main;
+    if (mainSymbolEl) mainSymbolEl.textContent = s.mainSymbol;
+    if (secCodeEl) secCodeEl.textContent = s.secondarySymbol || '';
+
+    if (totalMainCodeEl) totalMainCodeEl.textContent = s.mainSymbol;
+    if (totalSecCodeEl) totalSecCodeEl.textContent = s.secondarySymbol || '';
+}
+
+// 貨幣設定：用 prompt 比用家自己 set
+window.openCurrencySettings = function() {
+    const current = window.currencySettings;
+
+    const main = prompt(
+        '輸入【主要貨幣】代碼（例如: TWD, HKD, JPY, USD, EUR, CNY）',
+        current.main
+    );
+    if (!main) return;
+
+    const secondary = prompt(
+        '輸入【第二顯示貨幣】代碼（可留空代表唔顯示，例如: HKD, JPY, USD）',
+        current.secondary || ''
+    );
+
+    let rate = current.rate || 1;
+    if (secondary) {
+        const rateStr = prompt(
+            `請輸入匯率：1 ${main.toUpperCase()} = 幾多 ${secondary.toUpperCase()} ?`,
+            String(current.rate || 1)
+        );
+        rate = parseFloat(rateStr);
+        if (!rate || rate <= 0) {
+            window.showToast('匯率必須係大於 0 嘅數字');
+            return;
+        }
+    } else {
+        rate = 1;
+    }
+
+    window.currencySettings.main = main.toUpperCase();
+    window.currencySettings.secondary = secondary ? secondary.toUpperCase() : '';
+    window.currencySettings.rate = rate;
+    window.currencySettings.mainSymbol = guessCurrencySymbol(window.currencySettings.main);
+    window.currencySettings.secondarySymbol = secondary
+        ? guessCurrencySymbol(window.currencySettings.secondary)
+        : '';
+
+    updateCurrencyUI();
+    window.renderExpenses && window.renderExpenses();
+    window.showToast('貨幣設定已更新');
+};
+        
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
@@ -1225,6 +1323,10 @@
 
        window.currentFilter = window.currentFilter || 'ALL';
 
+// --- Expense / Budget functions (支援自訂貨幣 & 匯率) ---
+
+window.currentFilter = window.currentFilter || 'ALL';
+
 window.setFilter = function(name) {
     window.currentFilter = name;
     window.renderExpenses();
@@ -1241,9 +1343,7 @@ window.renderFilter = function() {
             }">全體</button>
     `;
 
-    if (!Array.isArray(window.companions)) {
-        window.companions = ['我'];
-    }
+    if (!Array.isArray(window.companions)) window.companions = ['我'];
 
     window.companions.forEach(n => {
         h += `
@@ -1259,128 +1359,153 @@ window.renderFilter = function() {
 
 window.renderExpenses = function() {
     const list = document.getElementById('expense-list');
-    const totalTwdEl = document.getElementById('total-expense-twd');
-    const totalHkdEl = document.getElementById('total-expense-hkd');
+    const totalMainEl = document.getElementById('total-expense-main');
+    const totalSecondaryEl = document.getElementById('total-expense-secondary');
     const titleEl = document.getElementById('budget-title');
     const listStatusEl = document.getElementById('list-filter-status');
 
+    const s = window.currencySettings;
     const currentFilter = window.currentFilter || 'ALL';
 
     if (!Array.isArray(window.expenses)) window.expenses = [];
     if (!Array.isArray(window.companions)) window.companions = ['我'];
 
     let displayExpenses = [];
-    let totalTWD = 0;
+    let totalMain = 0;
 
     if (currentFilter === 'ALL') {
-        // 顯示所有紀錄、總額 = 所有金額相加
-        displayExpenses = window.expenses;
         titleEl.innerText = '總消費 (ALL)';
         listStatusEl.innerText = '顯示全部';
-
-        totalTWD = window.expenses.reduce((sum, ex) => {
+        displayExpenses = window.expenses;
+        totalMain = window.expenses.reduce((sum, ex) => {
             const amt = Number(ex.amount) || 0;
             return sum + amt;
         }, 0);
     } else {
-        // 個人模式：只顯示有份分攤呢位成員嘅紀錄
         titleEl.innerText = `個人消費 (${currentFilter})`;
         listStatusEl.innerText = `只顯示 ${currentFilter} 的分攤項目`;
 
         displayExpenses = window.expenses.filter(ex => {
-            const sharedBy = Array.isArray(ex.sharedBy) && ex.sharedBy.length
-                ? ex.sharedBy
-                : ['我'];
+            const sharedBy =
+                Array.isArray(ex.sharedBy) && ex.sharedBy.length
+                    ? ex.sharedBy
+                    : ['我'];
             return sharedBy.includes(currentFilter);
         });
 
-        // 個人總額 = 每筆「自己應付份額」的總和
-        totalTWD = displayExpenses.reduce((sum, ex) => {
+        totalMain = displayExpenses.reduce((sum, ex) => {
             const fullAmount = Number(ex.amount) || 0;
-            const sharersCount = (Array.isArray(ex.sharedBy) && ex.sharedBy.length)
-                ? ex.sharedBy.length
-                : 1;
-            const shareAmount = sharersCount > 0 ? fullAmount / sharersCount : fullAmount;
+            const sharersCount =
+                Array.isArray(ex.sharedBy) && ex.sharedBy.length
+                    ? ex.sharedBy.length
+                    : 1;
+            const shareAmount =
+                sharersCount > 0 ? fullAmount / sharersCount : fullAmount;
             return sum + shareAmount;
         }, 0);
     }
 
-    const companionCount = Array.isArray(window.companions) ? window.companions.length : 0;
+    const companionCount = Array.isArray(window.companions)
+        ? window.companions.length
+        : 0;
 
-    const rowsHtml = displayExpenses.map(ex => {
-        const originalIndex = window.expenses.indexOf(ex);
+    const rowsHtml = displayExpenses
+        .map(ex => {
+            const originalIndex = window.expenses.indexOf(ex);
+            const fullAmount = Number(ex.amount) || 0;
 
-        const fullAmount = Number(ex.amount) || 0;
-        let displayAmount = fullAmount;
-        let displayLabel = '總額';
-        let detailText = '';
-        let amountClass = 'text-stone-800';
+            let displayAmount = fullAmount;
+            let displayLabel = '總額';
+            let detailText = '';
+            let amountClass = 'text-stone-800';
 
-        if (currentFilter !== 'ALL') {
-            const sharersCount = (Array.isArray(ex.sharedBy) && ex.sharedBy.length)
-                ? ex.sharedBy.length
-                : 1;
-            const shareAmount = sharersCount > 0 ? fullAmount / sharersCount : fullAmount;
-            displayAmount = shareAmount;
-            displayLabel = '應付';
-            detailText = `(總額 $${fullAmount} ÷ ${sharersCount}人)`;
-            amountClass = 'text-blue-600';
-        }
+            if (currentFilter !== 'ALL') {
+                const sharersCount =
+                    Array.isArray(ex.sharedBy) && ex.sharedBy.length
+                        ? ex.sharedBy.length
+                        : 1;
+                const shareAmount =
+                    sharersCount > 0 ? fullAmount / sharersCount : fullAmount;
+                displayAmount = shareAmount;
+                displayLabel = '應付';
+                detailText = `(總額 ${s.mainSymbol}${fullAmount} ÷ ${sharersCount}人)`;
+                amountClass = 'text-blue-400';
+            }
 
-        const amountTWD = Math.round(displayAmount);
-        const amountHKD = Math.round(displayAmount * EXCHANGE_RATE);
+            const mainAmount = Math.round(displayAmount);
+            const secondaryAmount =
+                s.secondary && s.rate
+                    ? Math.round(displayAmount * s.rate)
+                    : null;
 
-        const payer = ex.payer || '我';
-        const sharedBy = Array.isArray(ex.sharedBy) && ex.sharedBy.length
-            ? ex.sharedBy
-            : ['我'];
+            const payer = ex.payer || '我';
+            const sharedBy =
+                Array.isArray(ex.sharedBy) && ex.sharedBy.length
+                    ? ex.sharedBy
+                    : ['我'];
 
-        const shareText =
-            companionCount > 0 && sharedBy.length === companionCount
-                ? '全員'
-                : sharedBy.join(',');
+            const shareText =
+                companionCount > 0 && sharedBy.length === companionCount
+                    ? '全員'
+                    : sharedBy.join(',');
 
-        return `
-            <div class="flex flex-col bg-white p-4 rounded-[20px] shadow-sm border border-stone-100">
-                <div class="flex justify-between items-start mb-2">
-                    <div>
-                        <span class="text-base font-bold text-stone-700 block">${ex.item}</span>
-                        <span class="text-[10px] text-stone-400">
-                            由 ${payer} 先付 • 分攤: ${shareText}
-                        </span>
+            return `
+                <div class="flex flex-col bg-white p-4 rounded-[20px] shadow-sm border border-stone-100">
+                    <div class="flex justify-between items-start mb-2">
+                        <div>
+                            <span class="text-base font-bold text-stone-700 block">${ex.item}</span>
+                            <span class="text-[10px] text-stone-400">
+                                由 ${payer} 先付 • 分攤: ${shareText}
+                            </span>
+                        </div>
+                        <div class="text-right">
+                            <div class="text-[10px] text-stone-300 font-bold mb-0.5 text-right">
+                                ${displayLabel}
+                            </div>
+                            <div class="font-mono font-bold ${amountClass} text-lg">
+                                ${s.mainSymbol} ${mainAmount}
+                            </div>
+                            ${
+                                secondaryAmount !== null
+                                    ? `<div class="font-mono text-xs text-stone-400">
+                                           ≈ ${s.secondarySymbol} ${secondaryAmount}
+                                       </div>`
+                                    : ''
+                            }
+                            ${
+                                detailText
+                                    ? `<div class="text-[10px] text-stone-400 mt-0.5">${detailText}</div>`
+                                    : ''
+                            }
+                        </div>
                     </div>
-                    <div class="text-right">
-                        <div class="text-[10px] text-stone-300 font-bold mb-0.5 text-right">
-                            ${displayLabel}
-                        </div>
-                        <div class="font-mono font-bold ${amountClass} text-lg">
-                            NT$ ${amountTWD}
-                        </div>
-                        <div class="font-mono text-xs text-stone-400">
-                            ≈ HK$ ${amountHKD}
-                        </div>
-                        ${
-                            detailText
-                                ? `<div class="text-[10px] text-stone-400 mt-0.5">${detailText}</div>`
-                                : ''
-                        }
+                    <div class="flex justify-end border-t border-stone-50 pt-2 mt-1">
+                        <button onclick="deleteExpense(${originalIndex})"
+                            class="text-xs text-stone-300 hover:text-red-400 flex items-center gap-1 px-2 py-1 rounded tap-effect">
+                            <i data-lucide="trash-2" class="w-3 h-3"></i> 刪除
+                        </button>
                     </div>
                 </div>
-                <div class="flex justify-end border-t border-stone-50 pt-2 mt-1">
-                    <button onclick="deleteExpense(${originalIndex})"
-                        class="text-xs text-stone-300 hover:text-red-400 flex items-center gap-1 px-2 py-1 rounded tap-effect">
-                        <i data-lucide="trash-2" class="w-3 h-3"></i> 刪除
-                    </button>
-                </div>
-            </div>
-        `;
-    }).reverse().join('');
+            `;
+        })
+        .reverse()
+        .join('');
 
     list.innerHTML =
-        rowsHtml || `<div class="text-center text-stone-300 text-sm py-8">沒有相關紀錄</div>`;
+        rowsHtml ||
+        `<div class="text-center text-stone-300 text-sm py-8">沒有相關紀錄</div>`;
 
-    totalTwdEl.innerText = Math.round(totalTWD).toLocaleString();
-    totalHkdEl.innerText = Math.round(totalTWD * EXCHANGE_RATE).toLocaleString();
+    if (totalMainEl) totalMainEl.innerText = Math.round(totalMain).toLocaleString();
+
+    if (totalSecondaryEl) {
+        if (s.secondary && s.rate) {
+            totalSecondaryEl.innerText = Math.round(
+                totalMain * s.rate
+            ).toLocaleString();
+        } else {
+            totalSecondaryEl.innerText = '-';
+        }
+    }
 
     window.renderFilter();
     lucide.createIcons();
@@ -1394,10 +1519,14 @@ window.addExpense = function() {
     const item = (itemInput.value || '').trim();
     const amountStr = amountInput.value;
     const amountNum = Number(amountStr);
-
     const payer = payerSelect.value;
-    const shareBtns = document.querySelectorAll('.share-toggle-btn.share-btn-selected');
-    const sharedBy = Array.from(shareBtns).map(btn => btn.getAttribute('data-name'));
+
+    const shareBtns = document.querySelectorAll(
+        '.share-toggle-btn.share-btn-selected'
+    );
+    const sharedBy = Array.from(shareBtns).map(btn =>
+        btn.getAttribute('data-name')
+    );
 
     if (!item || !amountStr) {
         window.showToast('請輸入項目和金額');
@@ -1414,22 +1543,23 @@ window.addExpense = function() {
 
     if (!Array.isArray(window.expenses)) window.expenses = [];
 
+    const s = window.currencySettings;
+
     window.expenses.push({
         item,
-        amount: amountNum,         // 儲存為 Number，比較安全
+        amount: amountNum,           // 全部用主貨幣數值儲存
+        currency: s.main,            // 記低當時主貨幣（以後要轉更進階就用得著）
         payer,
         sharedBy,
         createdAt: new Date().toISOString()
     });
 
-    // 清空輸入
     itemInput.value = '';
     amountInput.value = '';
-    document.getElementById('input-hkd-preview').innerText = '0';
+    const previewEl = document.getElementById('input-secondary-preview');
+    if (previewEl) previewEl.innerText = '0';
 
-    // 立即更新畫面（本地）
     window.renderExpenses();
-    // 同步到 Firestore（走你新嘅 saveToFirestore + 多旅程路徑）
     window.saveToFirestore('expenses', window.expenses);
 };
 
@@ -1437,12 +1567,12 @@ window.deleteExpense = function(index) {
     showCustomConfirm('確定刪除這筆紀錄？', () => {
         if (!Array.isArray(window.expenses)) window.expenses = [];
         if (index < 0 || index >= window.expenses.length) return;
-
         window.expenses.splice(index, 1);
         window.renderExpenses();
         window.saveToFirestore('expenses', window.expenses);
     });
 };
+
 
 window.promptAddCompanion = function() {
     const name = prompt('請輸入旅伴名字：');
@@ -1618,16 +1748,31 @@ window.selectAllShares = function() {
         // ...
         window.templateScheduleData = templateScheduleData;
         
-        function initUI() {
-            lucide.createIcons();
-            generateHourlyWeather();
-            document.getElementById('expense-amount').addEventListener('input', function(e) {
-                 const val = parseInt(e.target.value) || 0;
-                 document.getElementById('input-hkd-preview').innerText = Math.round(val * EXCHANGE_RATE);
-            });
-            const today = new Date().toISOString().split('T')[0];
-            document.getElementById('new-trip-date').value = today;
-        }
+       function initUI() {
+    lucide.createIcons();
+    generateHourlyWeather();
+    updateCurrencyUI();   // ✅ 初始化貨幣標籤
+
+    const amountInput = document.getElementById('expense-amount');
+    const previewEl = document.getElementById('input-secondary-preview');
+
+    if (amountInput && previewEl) {
+        amountInput.addEventListener('input', function(e) {
+            const val = parseFloat(e.target.value) || 0;
+            const s = window.currencySettings;
+            if (s.secondary && s.rate) {
+                previewEl.innerText = Math.round(val * s.rate);
+            } else {
+                previewEl.innerText = '-';
+            }
+        });
+    }
+
+    const today = new Date().toISOString().split('T')[0];
+    const dateInput = document.getElementById('new-trip-date');
+    if (dateInput) dateInput.value = today;
+}
+
 
         initUI();
         
