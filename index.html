@@ -1252,14 +1252,299 @@
         // Template schedule (kept from original)
         // -----------------------
         const templateScheduleData = [
-            // (abbreviated sample to keep file size reasonable; original full template kept in your repo if needed)
-            { date: "27", month: "12", day: "Day 1", items: [
-                { time: "08:00", endTime: "11:00", title: "抵達落機", type: "transport", location: "桃園國際機場 (TPE)", note: "買悠遊卡/SIM卡，搭機場捷運", description: "飛機抵達機場並完成入境手續。" }
-            ]},
-            { date: "28", month: "12", day: "Day 2", items: [
-                { time: "12:00", endTime: "13:30", title: "午餐", type: "food", location: "台北車站附近", note: "嘗試小吃", description: "本地推薦小吃。" }
-            ]}
+           const templateScheduleData = [
+            // Day 1 (27)
+            {
+                date: "27",
+                month: "12",
+                day: "Day 1",
+                items: [
+                    {
+                        time: "08:00",
+                        endTime: "11:00",
+                        title: "抵達落機",
+                        type: "transport",
+                        location: "桃園國際機場 (TPE)",
+                        note: "買悠遊卡/SIM卡，搭機場捷運",
+                        description: "飛機抵達機場並完成入境手續。建議在機場先兌換少量台幣或取款。"
+                    },
+                    {
+                        time: "11:00",
+                        endTime: "12:00",
+                        title: "民宿擺行李",
+                        type: "stay",
+                        location: "台北市區 (自訂)",
+                        note: "辦理入住或寄放行李",
+                        description: "將行李寄放到住宿地點，方便開始輕鬆的行程。"
+                    },
+                    {
+                        time: "13:00",
+                        endTime: "14:30",
+                        title: "程味珍意麵滷味",
+                        type: "food",
+                        location: "程味珍意麵",
+                        tags: ["必吃滷味", "西門町"],
+                        note: "西門町老字號，必點意麵",
+                        description: "一家受歡迎的滷味店，滷汁濃郁入味，意麵 Q 彈有嚼勁。"
+                    },
+                    {
+                        time: "14:30",
+                        endTime: "17:00",
+                        title: "西門町",
+                        type: "sight",
+                        location: "西門町商圈",
+                        tags: ["逛街", "潮流"],
+                        note: "年輕人文化中心、萬年大樓",
+                        description: "台北的流行指標，有許多電影院、商店和小吃攤，適合逛街購物。"
+                    },
+                    {
+                        time: "17:00",
+                        endTime: "18:30",
+                        title: "妳有咖啡 neo cafe",
+                        type: "food",
+                        location: "妳有咖啡",
+                        tags: ["咖啡廳", "下午茶"],
+                        note: "網美風咖啡店，適合休息打卡",
+                        description: "風格溫馨的小店，可以喝杯咖啡、整理一下行程照片。"
+                    }
+                ]
+            },
+
+            // Day 2 (28)
+            {
+                date: "28",
+                month: "12",
+                day: "Day 2",
+                items: [
+                    {
+                        time: "09:00",
+                        endTime: "11:00",
+                        title: "早餐",
+                        type: "food",
+                        location: "台北 (自訂)",
+                        note: "找間傳統豆漿店或蛋餅店",
+                        description: "品嚐台式傳統早餐，如燒餅油條、飯糰或蛋餅。"
+                    },
+                    {
+                        time: "11:00",
+                        endTime: "15:00",
+                        title: "九份十份",
+                        type: "sight",
+                        location: "九份老街 / 十分瀑布",
+                        tags: ["山城", "天燈", "瀑布"],
+                        note: "建議先到十分瀑布，下午上九份",
+                        description: "可先在十分放天燈，下午前往九份老街欣賞山城景觀及茶樓文化。"
+                    },
+                    {
+                        time: "15:00",
+                        endTime: "17:00",
+                        title: "猴硐貓村",
+                        type: "sight",
+                        location: "猴硐貓村",
+                        tags: ["動物", "打卡"],
+                        note: "貓奴必去，愛護動物",
+                        description: "以貓咪為主題的小村落，到處可見可愛的貓咪，是愛貓人士的天堂。"
+                    },
+                    {
+                        time: "18:00",
+                        endTime: "20:00",
+                        title: "大股熟成燒肉專門-台北南京店",
+                        type: "food",
+                        location: "大股熟成燒肉 (南京店)",
+                        tags: ["燒肉", "晚餐"],
+                        note: "燒肉店，熟成肉品質不錯",
+                        description: "專注於熟成肉品的燒肉店，提供高品質的牛肉和舒適的用餐環境。"
+                    },
+                    {
+                        time: "21:00",
+                        endTime: "23:00",
+                        title: "寧夏夜市",
+                        type: "food",
+                        location: "寧夏夜市",
+                        tags: ["夜市", "圓環美食"],
+                        note: "美食集中，必吃劉芋仔",
+                        description: "以美食聞名的環狀夜市，小吃種類豐富，特別推薦劉芋仔蛋黃芋餅。"
+                    }
+                ]
+            },
+
+            // Day 3 (29)
+            {
+                date: "29",
+                month: "12",
+                day: "Day 3",
+                items: [
+                    {
+                        time: "11:00",
+                        endTime: "12:30",
+                        title: "犁園湯包館",
+                        type: "food",
+                        location: "犁園湯包館",
+                        tags: ["湯包", "午餐"],
+                        note: "絲瓜蝦仁湯包必點",
+                        description: "提供各式湯包點心，尤其是絲瓜蝦仁湯包清爽多汁。"
+                    },
+                    {
+                        time: "12:30",
+                        endTime: "14:00",
+                        title: "三創生活園區",
+                        type: "shop",
+                        location: "三創生活園區",
+                        tags: ["3C", "科技"],
+                        note: "最新的電子產品和數位內容",
+                        description: "台北主要的電子產品和科技商場，集合了各種品牌和體驗店。"
+                    },
+                    {
+                        time: "14:00",
+                        endTime: "16:00",
+                        title: "華山1914文化創意產業園區",
+                        type: "sight",
+                        location: "華山1914文創園區",
+                        tags: ["文創", "藝術"],
+                        note: "欣賞展覽和獨立商店",
+                        description: "由舊酒廠改造的藝術園區，經常舉辦各種展覽、市集和表演，充滿文藝氣息。"
+                    },
+                    {
+                        time: "16:00",
+                        endTime: "18:00",
+                        title: "螞米貝可千層蝴蝶酥/伴手禮",
+                        type: "shop",
+                        location: "螞米貝可 (自訂)",
+                        tags: ["伴手禮", "手信"],
+                        note: "購買千層蝴蝶酥等伴手禮",
+                        description: "購買台灣特色點心作為送給親友的禮物。"
+                    },
+                    {
+                        time: "19:00",
+                        endTime: "21:00",
+                        title: "輸漁永康店",
+                        type: "food",
+                        location: "輸漁日式料理 (永康店)",
+                        tags: ["日式料理", "晚餐"],
+                        note: "平價新鮮的海鮮丼飯",
+                        description: "提供新鮮的海鮮和日式料理，在永康街附近。"
+                    },
+                    {
+                        time: "21:00",
+                        endTime: "23:00",
+                        title: "饒河街觀光夜市",
+                        type: "food",
+                        location: "饒河街觀光夜市",
+                        tags: ["夜市", "小吃"],
+                        note: "胡椒餅、藥燉排骨",
+                        description: "台北知名的夜市之一，以胡椒餅、藥燉排骨和豐富的小吃聞名。"
+                    }
+                ]
+            },
+
+            // Day 4 (30)
+            {
+                date: "30",
+                month: "12",
+                day: "Day 4",
+                items: [
+                    {
+                        time: "12:00",
+                        endTime: "14:00",
+                        title: "比薩廣場/新北永和",
+                        type: "food",
+                        location: "比薩廣場 (永和)",
+                        tags: ["午餐", "義式"],
+                        note: "享受披薩和義大利麵",
+                        description: "在永和地區享用義式午餐，可以嘗試不同的披薩口味。"
+                    },
+                    {
+                        time: "14:00",
+                        endTime: "15:00",
+                        title: "樂華商圈商店街",
+                        type: "shop",
+                        location: "樂華夜市商圈",
+                        tags: ["逛街", "購物"],
+                        note: "周邊商店街閒逛",
+                        description: "樂華夜市周邊的商店，適合下午茶或購買小物品。"
+                    },
+                    {
+                        time: "15:00",
+                        endTime: "17:00",
+                        title: "Chill! Gelato",
+                        type: "food",
+                        location: "Chill! Gelato (自訂)",
+                        tags: ["甜點", "義式冰淇淋"],
+                        note: "品嚐手工義式冰淇淋",
+                        description: "一間手工義式冰淇淋店，口味清爽，適合炎熱的下午。"
+                    },
+                    {
+                        time: "17:00",
+                        endTime: "18:00",
+                        title: "下午茶/咖啡時間",
+                        type: "food",
+                        location: "台北咖啡店 (自訂)",
+                        tags: ["咖啡", "下午茶"],
+                        note: "享用咖啡或輕食",
+                        description: "一家風格獨特的咖啡店，可以休息放鬆，享受午後時光。"
+                    },
+                    {
+                        time: "18:00",
+                        endTime: "20:30",
+                        title: "詹記麻辣火鍋-西門大世界",
+                        type: "food",
+                        location: "詹記麻辣火鍋 (西門大世界)",
+                        tags: ["麻辣鍋", "必吃"],
+                        note: "台灣最紅麻辣鍋之一，鴨血豆腐無限續",
+                        description: "以復古裝潢和招牌鴨血、豆腐聞名的麻辣火鍋店，建議提前訂位。"
+                    },
+                    {
+                        time: "21:00",
+                        endTime: "23:00",
+                        title: "南機場夜市",
+                        type: "food",
+                        location: "南機場夜市",
+                        tags: ["夜市", "美食"],
+                        note: "在地人愛逛，來排芋頭餅",
+                        description: "當地知名的夜市，擁有許多排隊美食，適合晚餐後繼續品嚐小吃。"
+                    }
+                ]
+            },
+
+            // Day 5 (31)
+            {
+                date: "31",
+                month: "12",
+                day: "Day 5",
+                items: [
+                    {
+                        time: "12:00",
+                        endTime: "14:00",
+                        title: "Check Out / 華泰名品城",
+                        type: "shop",
+                        location: "華泰名品城 (GLORIA OUTLETS)",
+                        tags: ["購物", "Outlet"],
+                        note: "離機場近，最後購物衝刺",
+                        description: "在前往機場前，先到 Outlet 進行最後的購物，有許多國際品牌折扣店。"
+                    },
+                    {
+                        time: "20:00",
+                        endTime: "21:00",
+                        title: "晚餐",
+                        type: "food",
+                        location: "機場或市區 (自訂)",
+                        note: "回港前最後一餐",
+                        description: "在機場或市區找一間餐廳享用晚餐，準備搭機回港。"
+                    },
+                    {
+                        time: "22:00",
+                        endTime: "23:00",
+                        title: "回香港",
+                        type: "transport",
+                        location: "桃園國際機場 (TPE)",
+                        note: "搭機回程",
+                        description: "提前到達機場辦理登機手續，搭乘飛機返回香港。"
+                    }
+                ]
+            }
         ];
+
+        // 提供給建立新旅程時使用
         window.templateScheduleData = templateScheduleData;
 
         // -----------------------
