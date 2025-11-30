@@ -470,6 +470,8 @@
             messagingSenderId: "1063667328708",
             appId: "1:1063667328708:web:d2ae7acd304e589b790b91"
         };
+        // 匯率常數：TWD → HKD
+        const EXCHANGE_RATE = 0.26;
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
