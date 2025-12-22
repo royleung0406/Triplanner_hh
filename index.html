@@ -14,8 +14,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     
     <!-- Icons -->
-    <link rel="icon" href="icon.png">
-    <link rel="apple-touch-icon" href="icon.png">
+    <script src="https://unpkg.com/lucide@latest"></script>
     
     <!-- Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght=400;500;700&family=Zen+Maru+Gothic:wght=400;500;700;900&display=swap" rel="stylesheet">
@@ -27,9 +26,6 @@
             --text-sub: #9CA3AF;
             --accent: #D4C4B7;
             --highlight: #F43F5E;
-
-            --sat: env(safe-area-inset-top);
-            --sab: env(safe-area-inset-bottom);
         }
 
         body {
@@ -45,10 +41,6 @@
           }
         .no-scrollbar::-webkit-scrollbar { display: none; }
         .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-
-        .bottom-safe {
-          bottom: calc(var(--sab) + 24px); /* 24px = Tailwind bottom-6 */
-        }
 
         .zen-shadow {
             box-shadow: 0 8px 24px rgba(149, 157, 165, 0.08);
@@ -86,7 +78,7 @@
         
         /* 同步狀態燈號 */
         #sync-indicator {
-            position: fixed; top: calc(var(--sat) + 10px); left: 50%; transform: translateX(-50%);
+            position: fixed; top: 10px; left: 50%; transform: translateX(-50%);
             background: rgba(67, 61, 60, 0.9); color: white;
             padding: 6px 16px; border-radius: 20px; font-size: 11px; font-weight: bold;
             z-index: 9999; backdrop-filter: blur(4px);
@@ -99,7 +91,7 @@
 
         /* Toast Message */
         #toast-message {
-            position: fixed;bottom: calc(var(--sab) + 100px); left: 50%; transform: translateX(-50%) translateY(20px);
+            position: fixed; bottom: 100px; left: 50%; transform: translateX(-50%) translateY(20px);
             background: rgba(0,0,0,0.8); color: white; padding: 10px 20px; border-radius: 50px;
             font-size: 14px; opacity: 0; pointer-events: none; transition: all 0.3s; z-index: 10000;
         }
@@ -435,7 +427,7 @@
         </main>
 
         <!-- 底部導航 -->
-        <div class="fixed left-6 right-6 z-30 bottom-safe">
+        <div class="fixed bottom-6 left-6 right-6 z-30">
             <nav class="bg-white/90 backdrop-blur-xl rounded-[24px] shadow-[0_8px_32px_rgba(0,0,0,0.08)] p-2 border border-white/50">
                 <div class="flex justify-around items-center">
                     <button onclick="switchTab('schedule')" id="tab-schedule" class="active-tab flex items-center gap-2 px-4 py-3 tap-effect transition-all duration-300">
