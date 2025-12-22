@@ -246,9 +246,11 @@
                       </div>
                       一鍵工具
                     </h3>
-                    <button onclick="openInfoEditModal()" class="text-xs font-bold text-stone-400 hover:text-stone-600 tap-effect">
+                    <button onclick="showToast('請直接按每張卡右邊嘅 Edit 逐項修改')"
+                      class="text-xs font-bold text-stone-400 hover:text-stone-600 tap-effect">
                       編輯
                     </button>
+
                   </div>
                 
                   <div class="grid grid-cols-4 gap-2">
@@ -276,7 +278,8 @@
                       </div>
                       重要資料
                     </h3>
-                    <button onclick="openInfoEditModal()" class="text-xs font-bold text-stone-400 hover:text-stone-600 tap-effect">
+                     <button onclick="showToast('請直接按每張卡右邊嘅 Edit 逐項修改')"
+                      class="text-xs font-bold text-stone-400 hover:text-stone-600 tap-effect">
                       編輯
                     </button>
                   </div>
@@ -525,7 +528,39 @@
             <div class="flex gap-3"><button onclick="closeDateModal()" class="flex-1 py-3 rounded-2xl bg-stone-100 text-stone-500 font-bold tap-effect">取消</button><button onclick="updateTravelDates()" class="flex-1 py-3 rounded-2xl bg-[#433D3C] text-white font-bold tap-effect shadow-lg shadow-stone-300">確認更新</button></div>
         </div>
     </div>
-
+<!-- INFO FIELD EDIT MODAL (單項編輯) -->
+        <div id="info-field-modal"
+          class="fixed inset-0 bg-[#433D3C]/60 z-50 hidden flex items-end sm:items-center justify-center p-4 backdrop-blur-sm transition-opacity">
+          <div class="bg-[#FEFDF5] w-full max-w-md rounded-[32px] p-6 shadow-2xl modal-enter relative max-h-[85vh] overflow-y-auto no-scrollbar">
+            <h3 class="text-xl font-bold mb-6 flex justify-between items-center text-[#433D3C]">
+              <span id="info-field-modal-title">編輯</span>
+              <button onclick="closeInfoFieldModal()"
+                class="w-8 h-8 rounded-full bg-stone-100 flex items-center justify-center text-stone-400 hover:text-stone-600 tap-effect">
+                <i data-lucide="x" class="w-5 h-5"></i>
+              </button>
+            </h3>
+        
+            <div class="space-y-2">
+              <label id="info-field-modal-label" class="text-xs text-stone-500 font-bold ml-1">內容</label>
+        
+              <!-- 單行 / 多行我用 textarea，地址電話都夠用；你想分開 input 我都可以再優化 -->
+              <textarea id="info-field-modal-input" rows="4"
+                class="w-full bg-white rounded-2xl p-4 text-sm font-medium border border-transparent focus:border-stone-200 focus:outline-none shadow-sm resize-none"
+                placeholder="請輸入內容..."></textarea>
+            </div>
+        
+            <div class="flex gap-3 mt-6">
+              <button onclick="closeInfoFieldModal()"
+                class="flex-1 py-3 rounded-2xl bg-stone-100 text-stone-500 font-bold tap-effect">
+                取消
+              </button>
+              <button onclick="saveInfoFieldModal()"
+                class="flex-1 py-3 rounded-2xl bg-[#433D3C] text-white font-bold tap-effect shadow-lg shadow-stone-300">
+                儲存
+              </button>
+            </div>
+          </div>
+        </div>
     <!-- Firebase Integration -->
     <script type="module">
         import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js';
@@ -793,25 +828,40 @@ window.openCurrencySettings = function() {
           const cards = document.getElementById("info-cards");
           if (cards) {
             const d = window.tripInfo.docs;
-            const row = (label, value, onCopy) => `
+            const row = (label, value, key) => `
               <div class="bg-stone-50 rounded-2xl p-4 flex items-start justify-between gap-3">
                 <div class="min-w-0">
                   <p class="text-[10px] font-bold text-stone-400 mb-1">${label}</p>
-                  <p class="text-sm font-bold text-stone-700 break-words">${value || '<span class="text-stone-300 font-bold">未設定</span>'}</p>
+                  <p class="text-sm font-bold text-stone-700 break-words">
+                    ${value || '<span class="text-stone-300 font-bold">未設定</span>'}
+                  </p>
                 </div>
-                <button onclick="${onCopy}" class="flex-shrink-0 bg-white rounded-xl px-3 py-2 text-xs font-bold text-stone-500 tap-effect shadow-sm border border-stone-100">
-                  Copy
-                </button>
+            
+                <div class="flex flex-col gap-2 flex-shrink-0">
+                  <button
+                    onclick="openInfoFieldModal('${key}', '${label.replace(/'/g, "\\'")}')"
+                    class="bg-white rounded-xl px-3 py-2 text-xs font-bold text-stone-500 tap-effect shadow-sm border border-stone-100">
+                    Edit
+                  </button>
+            
+                  <button
+                    onclick="copyText(window.tripInfo.docs['${key}'])"
+                    class="bg-white rounded-xl px-3 py-2 text-xs font-bold text-stone-500 tap-effect shadow-sm border border-stone-100">
+                    Copy
+                  </button>
+                </div>
               </div>
             `;
+
             cards.innerHTML = `
-              ${row("護照/證件", d.passport, "copyText(window.tripInfo.docs.passport)")}
-              ${row("航班編號", d.flightNo, "copyText(window.tripInfo.docs.flightNo)")}
-              ${row("酒店", d.hotelName, "copyText(window.tripInfo.docs.hotelName)")}
-              ${row("酒店地址", d.hotelAddr, "copyText(window.tripInfo.docs.hotelAddr)")}
-              ${row("酒店電話", d.hotelPhone, "copyText(window.tripInfo.docs.hotelPhone)")}
-              ${row("緊急聯絡", d.emergency, "copyText(window.tripInfo.docs.emergency)")}
+              ${row("護照/證件", d.passport, "passport")}
+              ${row("航班編號", d.flightNo, "flightNo")}
+              ${row("酒店", d.hotelName, "hotelName")}
+              ${row("酒店地址", d.hotelAddr, "hotelAddr")}
+              ${row("酒店電話", d.hotelPhone, "hotelPhone")}
+              ${row("緊急聯絡", d.emergency, "emergency")}
             `;
+
           }
         
           // 2) Checklist
@@ -975,6 +1025,75 @@ window.openCurrencySettings = function() {
           window.saveToFirestore("info", window.tripInfo);
           window.renderInfoTab();
           window.showToast("重要資料已更新");
+        };
+
+        // ===== INFO 單項編輯 Modal =====
+        window._infoEditState = { key: null, label: "" };
+        
+        window.openInfoFieldModal = function(key, label) {
+          window.ensureTripInfoDefaults();
+        
+          window._infoEditState.key = key;
+          window._infoEditState.label = label || "";
+        
+          const d = window.tripInfo.docs || {};
+          const val = d[key] || "";
+        
+          const modal = document.getElementById("info-field-modal");
+          const titleEl = document.getElementById("info-field-modal-title");
+          const labelEl = document.getElementById("info-field-modal-label");
+          const inputEl = document.getElementById("info-field-modal-input");
+        
+          if (titleEl) titleEl.textContent = `編輯：${label || key}`;
+          if (labelEl) labelEl.textContent = label || key;
+          if (inputEl) inputEl.value = val;
+        
+          modal.classList.remove("hidden");
+          lucide.createIcons();
+        
+          // 點背景關閉（跟你其他 modal 一致）
+          modal.onclick = (e) => { if (e.target === modal) window.closeInfoFieldModal(); };
+        };
+        
+        window.closeInfoFieldModal = function() {
+          const modal = document.getElementById("info-field-modal");
+          modal.classList.add("hidden");
+          window._infoEditState = { key: null, label: "" };
+        };
+        
+        window.saveInfoFieldModal = function() {
+          const key = window._infoEditState.key;
+          if (!key) return;
+        
+          const inputEl = document.getElementById("info-field-modal-input");
+          const val = (inputEl?.value || "").trim();
+        
+          window.ensureTripInfoDefaults();
+          window.tripInfo.docs = window.tripInfo.docs || {};
+          window.tripInfo.docs[key] = val;
+        
+          window.saveToFirestore("info", window.tripInfo);
+          window.renderInfoTab();
+          window.showToast("已更新");
+          window.closeInfoFieldModal();
+        };
+
+        
+        window.editDocField = function(key, label) {
+        window.ensureTripInfoDefaults();
+        
+        const d = window.tripInfo.docs || {};
+        const current = d[key] || "";
+        
+        const val = prompt(`修改：${label}`, current);
+        if (val === null) return; // 取消就唔改
+        
+          d[key] = val;
+          window.tripInfo.docs = d;
+        
+          window.saveToFirestore("info", window.tripInfo);
+          window.renderInfoTab();
+          window.showToast("已更新");
         };
 
 
@@ -2189,6 +2308,9 @@ window.selectAllShares = function() {
         window.saveScheduleItem = function(e) { e.preventDefault(); const d = parseInt(document.getElementById('edit-day-index').value); const i = parseInt(document.getElementById('edit-item-index').value); const item = { time: document.getElementById('edit-time').value, endTime: document.getElementById('edit-end-time').value, type: document.getElementById('edit-type').value, title: document.getElementById('edit-title').value, location: document.getElementById('edit-location').value, tags: document.getElementById('edit-tags').value.split(',').map(t=>t.trim()).filter(t=>t), note: document.getElementById('edit-note').value, description: document.getElementById('edit-description').value }; if (i === -1) window.scheduleData[d].items.push(item); else window.scheduleData[d].items[i] = item; window.saveToFirestore('schedule', window.scheduleData); window.renderTimeline(d); closeEditModal(); }
         window.deleteScheduleItem = function(d, i) { showCustomConfirm("確定刪除？", () => { window.scheduleData[d].items.splice(i, 1); window.saveToFirestore('schedule', window.scheduleData); window.renderTimeline(d); }); }
         editModal.addEventListener('click', (e) => { if (e.target === editModal) closeEditModal(); });
+
+        
+
 
         // Date & Days
         const dateModal = document.getElementById('date-modal');
