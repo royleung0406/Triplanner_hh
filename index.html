@@ -1196,7 +1196,7 @@ function weatherIconFromCode(code) {
   return "cloud";
 }
 
-function renderHourlyWeatherFromApi(api) {
+function renderHourlyWeatherFromApi(api, targetDateStr) {
   const container = document.getElementById("hourly-weather-container");
   const times = api?.hourly?.time || [];
   const temps = api?.hourly?.temperature_2m || [];
@@ -1208,16 +1208,34 @@ function renderHourlyWeatherFromApi(api) {
     return;
   }
 
-  const now = new Date();
-  let startIdx = 0;
-  for (let i=0; i<times.length; i++) {
-    if (new Date(times[i]) >= now) { startIdx = i; break; }
+  // targetDateStr: "YYYY-MM-DD"
+  // 如果冇傳入，就 fallback 用「今日」
+  const target = targetDateStr || new Date().toISOString().slice(0, 10);
+
+  // 只揀出屬於 target 呢一日嘅 hours
+  const idxs = [];
+  for (let i = 0; i < times.length; i++) {
+    // open-meteo time 格式通常係 "YYYY-MM-DDTHH:MM"
+    // 我哋直接用字串頭 10 個字比對日期即可（避免 timezone 亂）
+    if (String(times[i]).slice(0, 10) === target) idxs.push(i);
   }
 
+  if (!idxs.length) {
+    container.innerHTML = `<div class="text-stone-300 text-sm py-6 text-center w-full">呢日暫時未有天氣資料</div>`;
+    return;
+  }
+
+  // 顯示當日 06:00–23:00（你可以自己改範圍）
+  const wantedHours = new Set([
+    "06","07","08","09","10","11","12","13","14","15","16","17","18","19","20","21","22","23"
+  ]);
+
   let html = "";
-  for (let i=startIdx; i<Math.min(startIdx+18, times.length); i++) {
-    const dt = new Date(times[i]);
-    const hh = dt.getHours().toString().padStart(2, "0");
+  for (const i of idxs) {
+    const tStr = String(times[i]);
+    const hh = tStr.slice(11, 13); // "HH"
+    if (!wantedHours.has(hh)) continue;
+
     const icon = weatherIconFromCode(codes[i]);
     const t = Math.round(temps[i]);
 
@@ -1230,10 +1248,44 @@ function renderHourlyWeatherFromApi(api) {
     `;
   }
 
-  container.innerHTML = html;
+  container.innerHTML = html || `<div class="text-stone-300 text-sm py-6 text-center w-full">呢日冇符合時段資料</div>`;
   lucide.createIcons();
 }
 
+function setHeaderTempFromApiForDate(api, targetDateStr) {
+  const el = document.getElementById("header-temp");
+  if (!el) return;
+
+  const times = api?.hourly?.time || [];
+  const temps = api?.hourly?.temperature_2m || [];
+  if (!times.length) return;
+
+  const target = targetDateStr || new Date().toISOString().slice(0, 10);
+
+  // 優先搵 target 日 12:00
+  let idx = -1;
+  for (let i = 0; i < times.length; i++) {
+    const tStr = String(times[i]);
+    if (tStr.slice(0, 10) === target && tStr.slice(11, 13) === "12") {
+      idx = i;
+      break;
+    }
+  }
+
+  // 搵唔到 12:00，就用 target 日第一個 hour
+  if (idx === -1) {
+    for (let i = 0; i < times.length; i++) {
+      if (String(times[i]).slice(0, 10) === target) {
+        idx = i;
+        break;
+      }
+    }
+  }
+
+  el.textContent = (idx === -1) ? `--°` : `${Math.round(temps[idx])}°`;
+}
+
+        
 function setHeaderTempFromApi(api) {
   const el = document.getElementById("header-temp");
   if (!el) return;
@@ -1244,7 +1296,7 @@ function setHeaderTempFromApi(api) {
 
   const now = new Date();
   let bestIdx = 0;
-  for (let i=0; i<times.length; i++) {
+  for (let i = 0; i < times.length; i++) {
     if (new Date(times[i]) >= now) { bestIdx = i; break; }
   }
   el.textContent = `${Math.round(temps[bestIdx])}°`;
@@ -1295,8 +1347,14 @@ window.loadTripWeather = async function() {
     }
 
     const data = await fetchHourlyWeather(meta.weather.lat, meta.weather.lon, meta.weather.timezone);
-    renderHourlyWeatherFromApi(data);
-    setHeaderTempFromApi(data);
+    const dayObj = window.scheduleData?.[window.currentDayIndex];
+    const yyyy = (window.currentTrip?.meta?.startDate || "").slice(0,4);
+    const mm = String(dayObj?.month || "").padStart(2,"0");
+    const dd = String(dayObj?.date || "").padStart(2,"0");
+    const targetDate = (yyyy && mm && dd) ? `${yyyy}-${mm}-${dd}` : null;
+
+    renderHourlyWeatherFromApi(data, targetDate);
+    setHeaderTempFromApiForDate(data, targetDate);
   } catch (e) {
     console.warn("loadTripWeather error:", e);
     generateHourlyWeather();
