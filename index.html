@@ -201,7 +201,7 @@
                 <div class="flex flex-col items-end gap-1">
                     <div class="flex items-center gap-1 text-gray-600 bg-white px-2 py-1 rounded-full shadow-sm border border-stone-100">
                         <i data-lucide="cloud" class="w-3 h-3 text-stone-400"></i>
-                        <span class="text-xs font-bold">22°</span>
+                        <span id="header-temp" class="text-xs font-bold">--°</span>
                     </div>
                     <!-- 連線狀態燈 -->
                     <div class="flex items-center gap-1 mt-1">
@@ -401,6 +401,13 @@
                 <div class="space-y-1"><label class="text-xs text-stone-500 font-bold ml-1">旅程名稱</label><input type="text" id="new-trip-title" class="w-full bg-white rounded-2xl p-4 text-base font-bold border border-transparent focus:border-stone-200 focus:outline-none shadow-sm" placeholder="例如: 東京五日遊"></div>
                 <div class="space-y-1"><label class="text-xs text-stone-500 font-bold ml-1">出發日期</label><input type="date" id="new-trip-date" class="w-full bg-white rounded-2xl p-4 text-base font-medium border border-transparent focus:border-stone-200 focus:outline-none shadow-sm"></div>
                 <div class="space-y-1"><label class="text-xs text-stone-500 font-bold ml-1">天數</label><input type="number" id="new-trip-days" value="3" min="1" max="30" class="w-full bg-white rounded-2xl p-4 text-base font-medium border border-transparent focus:border-stone-200 focus:outline-none shadow-sm"></div>
+                <div class="space-y-1">
+                  <label class="text-xs text-stone-500 font-bold ml-1">目的地 / 城市</label>
+                  <input type="text" id="new-trip-destination"
+                    class="w-full bg-white rounded-2xl p-4 text-base font-medium border border-transparent focus:border-stone-200 focus:outline-none shadow-sm"
+                    placeholder="例如: Tokyo / Osaka / Paris">
+                </div>
+
                 
                 <div class="pt-2 flex items-center gap-2">
                     <input type="checkbox" id="use-template" class="w-4 h-4 rounded text-[#433D3C] focus:ring-[#433D3C]">
@@ -860,6 +867,8 @@ window.openCurrencySettings = function() {
             // Start listening on public paths
             // Note: startTripListeners will now use the correct public path because currentTrip.isShared is true
             window.startTripListeners(sharedTripId);
+            window.loadTripWeather();
+
         }
 
         // 7. Start Listeners for Specific Trip (Modified to use dynamic paths)
@@ -969,6 +978,7 @@ window.openCurrencySettings = function() {
             document.getElementById('view-trip-detail').classList.add('page-hidden');
             document.getElementById('view-trip-list').classList.remove('page-hidden');
             document.getElementById('view-trip-list').classList.add('page-active');
+            window.loadTripWeather();
         }
         
         // --- Sharing Functionality (NEW) ---
@@ -999,6 +1009,8 @@ window.openCurrencySettings = function() {
             // 1. Prepare shared data structure (including meta and all content)
             const sharedMeta = {
                 ...meta,
+                destination: meta.destination || { name: "" },
+                weather: meta.weather || {},
                 creatorId: currentUser.uid,
                 isShared: true,
                 createdAt: meta.createdAt || new Date().toISOString()
@@ -1102,6 +1114,8 @@ window.openCurrencySettings = function() {
                     isShared: true, // Key flag: indicates it's a bookmark to a public document
                     sharedId: sharedId,
                     creatorId: window.currentTrip.creatorId,
+                    destination: window.currentTrip.meta.destination || { name: "" },
+                    weather: window.currentTrip.meta.weather || {},
                     bookmarkedAt: new Date().toISOString()
                 };
                 
@@ -1144,6 +1158,150 @@ window.openCurrencySettings = function() {
 
 
         // --- Other Logic (Kept as before, updated save calls to use global context) ---
+
+        // =====================
+// Weather (Open-Meteo)
+// =====================
+async function geocodePlace(name) {
+  const q = encodeURIComponent((name || "").trim());
+  if (!q) return null;
+  const url = `https://geocoding-api.open-meteo.com/v1/search?name=${q}&count=1&language=zh&format=json`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error("geocode failed");
+  const data = await res.json();
+  const r = data?.results?.[0];
+  if (!r) return null;
+  return { lat: r.latitude, lon: r.longitude, timezone: r.timezone || "auto", resolvedName: r.name };
+}
+
+async function fetchHourlyWeather(lat, lon, timezone) {
+  const url =
+    `https://api.open-meteo.com/v1/forecast` +
+    `?latitude=${lat}&longitude=${lon}` +
+    `&hourly=temperature_2m,weathercode` +
+    `&timezone=${encodeURIComponent(timezone || "auto")}`;
+  const res = await fetch(url);
+  if (!res.ok) throw new Error("weather fetch failed");
+  return await res.json();
+}
+
+function weatherIconFromCode(code) {
+  if (code === 0) return "sun";
+  if ([1,2,3].includes(code)) return "cloud-sun";
+  if ([45,48].includes(code)) return "cloud";
+  if (code >= 51 && code <= 67) return "cloud-rain";
+  if (code >= 71 && code <= 77) return "cloud-snow";
+  if (code >= 80 && code <= 82) return "cloud-rain";
+  if (code >= 95) return "cloud-lightning";
+  return "cloud";
+}
+
+function renderHourlyWeatherFromApi(api) {
+  const container = document.getElementById("hourly-weather-container");
+  const times = api?.hourly?.time || [];
+  const temps = api?.hourly?.temperature_2m || [];
+  const codes = api?.hourly?.weathercode || [];
+
+  if (!container) return;
+  if (!times.length) {
+    container.innerHTML = `<div class="text-stone-300 text-sm py-6 text-center w-full">暫時未有天氣資料</div>`;
+    return;
+  }
+
+  const now = new Date();
+  let startIdx = 0;
+  for (let i=0; i<times.length; i++) {
+    if (new Date(times[i]) >= now) { startIdx = i; break; }
+  }
+
+  let html = "";
+  for (let i=startIdx; i<Math.min(startIdx+18, times.length); i++) {
+    const dt = new Date(times[i]);
+    const hh = dt.getHours().toString().padStart(2, "0");
+    const icon = weatherIconFromCode(codes[i]);
+    const t = Math.round(temps[i]);
+
+    html += `
+      <div class="weather-scroll-item flex flex-col items-center justify-center bg-stone-50 rounded-xl py-2 px-1 snap-start">
+        <span class="text-[10px] text-stone-400 font-mono mb-1">${hh}:00</span>
+        <i data-lucide="${icon}" class="w-5 h-5 text-stone-600 mb-1"></i>
+        <span class="text-xs font-bold text-stone-800">${t}°</span>
+      </div>
+    `;
+  }
+
+  container.innerHTML = html;
+  lucide.createIcons();
+}
+
+function setHeaderTempFromApi(api) {
+  const el = document.getElementById("header-temp");
+  if (!el) return;
+
+  const times = api?.hourly?.time || [];
+  const temps = api?.hourly?.temperature_2m || [];
+  if (!times.length) return;
+
+  const now = new Date();
+  let bestIdx = 0;
+  for (let i=0; i<times.length; i++) {
+    if (new Date(times[i]) >= now) { bestIdx = i; break; }
+  }
+  el.textContent = `${Math.round(temps[bestIdx])}°`;
+}
+
+// Save meta to correct path (private or public shared)
+async function saveTripMetaDynamic(tripId, metaObj) {
+  if (!currentUser) return;
+  try {
+    if (window.currentTrip.isShared) {
+      const metaRef = getTripDocRef(tripId, 'meta', true);
+      await setDoc(metaRef, metaObj);
+    } else {
+      await window.saveTripMeta(tripId, metaObj);
+    }
+  } catch (e) {
+    console.error("saveTripMetaDynamic failed:", e);
+  }
+}
+
+// Main entry: load current trip weather
+window.loadTripWeather = async function() {
+  try {
+    const meta = window.currentTrip?.meta || {};
+    const destName = meta?.destination?.name?.trim?.() || "";
+    if (!destName) {
+      // 無目的地就用 fallback
+      generateHourlyWeather();
+      document.getElementById("header-temp").textContent = "--°";
+      return;
+    }
+
+    // 若未有 lat/lon，先 geocode，然後存回 meta（每個 trip 獨立設定）
+    if (!meta.weather?.lat || !meta.weather?.lon) {
+      const w = await geocodePlace(destName);
+      if (!w) throw new Error("no geocode result");
+      meta.weather = w;
+
+      // 同步更新：currentTrip.meta + tripsList（私有模式先需要）
+      window.currentTrip.meta = meta;
+      if (!window.currentTrip.isShared) {
+        const idx = window.tripsList.findIndex(t => t.id === window.currentTrip.id);
+        if (idx >= 0) window.tripsList[idx] = meta;
+        await window.saveTripsIndex(window.tripsList);
+      }
+
+      await saveTripMetaDynamic(window.currentTrip.id, meta);
+    }
+
+    const data = await fetchHourlyWeather(meta.weather.lat, meta.weather.lon, meta.weather.timezone);
+    renderHourlyWeatherFromApi(data);
+    setHeaderTempFromApi(data);
+  } catch (e) {
+    console.warn("loadTripWeather error:", e);
+    generateHourlyWeather();
+  }
+};
         
         // Load List UI (Same as before)
         window.renderTripListUI = function() {
@@ -1176,6 +1334,9 @@ window.openCurrencySettings = function() {
                                 <h3 class="text-2xl font-bold text-white mb-1 drop-shadow-sm leading-tight">${trip.title}</h3>
                                 <div class="flex items-center gap-2 text-white/90 text-xs font-bold bg-black/10 w-fit px-2 py-1 rounded-lg backdrop-blur-sm">
                                     <i data-lucide="calendar" class="w-3 h-3"></i> ${trip.startDate}
+                                        <div class="flex items-center gap-2 text-white/90 text-xs font-bold bg-black/10 w-fit px-2 py-1 rounded-lg backdrop-blur-sm mt-2">
+                                          <i data-lucide="map-pin" class="w-3 h-3"></i> ${trip.destination?.name || "未設定目的地"}
+                                        </div>
                                 </div>
                             </div>
                             
@@ -1202,6 +1363,7 @@ window.openCurrencySettings = function() {
             const startDate = document.getElementById('new-trip-date').value;
             const days = parseInt(document.getElementById('new-trip-days').value);
             const useTemplate = document.getElementById('use-template').checked;
+            const destinationName = (document.getElementById('new-trip-destination')?.value || "").trim();
             
             if(!title || !startDate) return window.showToast("請填寫完整資訊");
             
@@ -1213,8 +1375,20 @@ window.openCurrencySettings = function() {
                 days: days,
                 isShared: false,
                 creatorId: currentUser?.uid || 'anonymous',
-                createdAt: new Date().toISOString()
+                createdAt: new Date().toISOString(),
+                destination: { name: destinationName },
+                weather: {}
             };
+
+            if (destinationName) {
+              try {
+                const w = await geocodePlace(destinationName);
+                if (w) newTripMeta.weather = w;
+              } catch (e) {
+                console.warn("Geocode failed:", e);
+              }
+            }
+
             
             // 1. Prepare Initial Schedule Data
             let initialSchedule = [];
@@ -1290,11 +1464,15 @@ window.openCurrencySettings = function() {
             c.innerHTML = window.scheduleData.map((d, i) => `<button onclick="selectDay(${i})" class="day-btn flex-shrink-0 flex flex-col items-center justify-center w-[60px] h-[72px] rounded-2xl transition-all border border-transparent tap-effect ${i===window.currentDayIndex?'bg-[#433D3C] text-[#FEFDF5] shadow-lg shadow-stone-200':'bg-white text-stone-300'}"><span class="text-[10px] font-bold tracking-wide opacity-80">${d.day}</span><span class="text-xl font-bold font-mono mt-1">${d.month}/${d.date}</span></button>`).join(''); 
         }
         
-        window.selectDay = function(i) { 
-            window.currentDayIndex = i; 
-            document.querySelectorAll('.day-btn').forEach((b, idx) => { b.className = `day-btn flex-shrink-0 flex flex-col items-center justify-center w-[60px] h-[72px] rounded-2xl transition-all border border-transparent tap-effect ${idx===i?'bg-[#433D3C] text-[#FEFDF5] shadow-lg shadow-stone-200 transform scale-105':'bg-white text-stone-300'}`; }); 
-            window.renderTimeline(i);
-            generateHourlyWeather(); 
+        window.selectDay = function(i) {
+          window.currentDayIndex = i;
+          document.querySelectorAll('.day-btn').forEach((b, idx) => {
+            b.className = `day-btn flex-shrink-0 flex flex-col items-center justify-center w-[60px] h-[72px] rounded-2xl transition-all border border-transparent tap-effect ${
+              idx===i?'bg-[#433D3C] text-[#FEFDF5] shadow-lg shadow-stone-200 transform scale-105':'bg-white text-stone-300'
+            }`;
+          });
+          window.renderTimeline(i);
+          window.loadTripWeather(); // ✅ 用返同一個 trip 設定
         }
         
         window.renderTimeline = function(i) { 
@@ -1665,32 +1843,86 @@ window.selectAllShares = function() {
         window.changeDays = function(delta) { let v = parseInt(document.getElementById('trip-days-input').value) + delta; if(v < 1) v = 1; document.getElementById('trip-days-input').value = v; }
         
         window.updateTravelDates = function() {
-            const dStr = document.getElementById('start-date-input').value; const days = parseInt(document.getElementById('trip-days-input').value);
-            if(!dStr) return window.showToast("請選擇日期");
-            const start = new Date(dStr.replace(/-/g, '/'));
-            const oldLength = window.scheduleData.length;
-            
-            if(days > oldLength) { for(let i=oldLength; i<days; i++) window.scheduleData.push({ date:"", month:"", day:`Day ${i+1}`, items:[] }); }
-            else if(days < oldLength) { if(!confirm(`確定減少天數？`)) return; window.scheduleData.length = days; }
-            
-            window.scheduleData.forEach((d, i) => { const dt = new Date(start); dt.setDate(start.getDate()+i); d.date=dt.getDate(); d.month=dt.getMonth()+1; d.day=`Day ${i+1}`; });
-            
-            window.saveToFirestore('schedule', window.scheduleData); 
-            
-            // Update metadata locally and remotely (only for the creator's private copy)
-            if(!window.currentTrip.isShared) {
-                const tripIndex = window.tripsList.findIndex(t => t.id === window.currentTrip.id);
-                if (tripIndex !== -1) {
-                    window.tripsList[tripIndex].days = days;
-                    window.tripsList[tripIndex].startDate = dStr;
-                    window.currentTrip.meta = window.tripsList[tripIndex];
-                    window.saveTripsIndex(window.tripsList);
-                    window.saveTripMeta(window.currentTrip.id, window.currentTrip.meta);
-                }
+          const dStr = document.getElementById('start-date-input').value;
+          const days = parseInt(document.getElementById('trip-days-input').value, 10);
+
+          if (!dStr) return window.showToast("請選擇日期");
+          if (!days || days < 1) return window.showToast("天數不正確");
+
+          const start = new Date(dStr.replace(/-/g, '/')); // Safari safe
+          const oldLength = Array.isArray(window.scheduleData) ? window.scheduleData.length : 0;
+
+          const applyUpdate = async () => {
+            if (!Array.isArray(window.scheduleData)) window.scheduleData = [];
+
+            if (days > oldLength) {
+              for (let i = oldLength; i < days; i++) {
+                window.scheduleData.push({
+                  date: "",
+                  month: "",
+                  day: `Day ${i + 1}`,
+                  items: []
+                });
+              }
+            } else if (days < oldLength) {
+              window.scheduleData.length = days;
             }
-            
-            window.renderDaySelector(); window.renderTimeline(0); closeDateModal();
-        }
+
+            window.scheduleData.forEach((d, i) => {
+              const dt = new Date(start);
+              dt.setDate(start.getDate() + i);
+              d.date = dt.getDate();
+              d.month = dt.getMonth() + 1;
+              d.day = `Day ${i + 1}`;
+              if (!Array.isArray(d.items)) d.items = [];
+            });
+
+            window.currentDayIndex = Math.max(
+              0,
+              Math.min(window.currentDayIndex || 0, window.scheduleData.length - 1)
+            );
+        
+            window.saveToFirestore('schedule', window.scheduleData);
+        
+            if (window.currentTrip && window.currentTrip.meta) {
+              window.currentTrip.meta.startDate = dStr;
+              window.currentTrip.meta.days = days;
+        
+              if (typeof saveTripMetaDynamic === 'function') {
+                await saveTripMetaDynamic(window.currentTrip.id, window.currentTrip.meta);
+              } else if (!window.currentTrip.isShared && window.saveTripMeta) {
+                await window.saveTripMeta(window.currentTrip.id, window.currentTrip.meta);
+              }
+
+              if (!window.currentTrip.isShared) {
+                const tripIndex = window.tripsList?.findIndex?.(t => t.id === window.currentTrip.id) ?? -1;
+                if (tripIndex !== -1) {
+                  window.tripsList[tripIndex].startDate = dStr;
+                  window.tripsList[tripIndex].days = days;
+                  window.tripsList[tripIndex].title = window.currentTrip.meta.title;
+                  window.tripsList[tripIndex].destination = window.currentTrip.meta.destination;
+                  window.tripsList[tripIndex].weather = window.currentTrip.meta.weather;
+                  window.saveTripsIndex && window.saveTripsIndex(window.tripsList);
+                }
+              }
+            }
+
+            window.renderDaySelector();
+            window.renderTimeline(window.currentDayIndex);
+            window.loadTripWeather && window.loadTripWeather();
+            window.closeDateModal();
+          };
+
+          if (days < oldLength) {
+            showCustomConfirm(
+              `確定減少天數到 ${days} 日？\n多出日期的行程會被刪除（無法復原）。`,
+              () => applyUpdate()
+            );
+          } else {
+            applyUpdate();
+          }
+        };
+
 
         window.switchTab = function(tabId) { document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden')); document.getElementById(`view-${tabId}`).classList.remove('hidden'); ['schedule', 'info', 'budget'].forEach(id => { const btn = document.getElementById(`tab-${id}`); const span = btn.querySelector('span'); if(id === tabId) { btn.className = "active-tab flex items-center gap-2 px-5 py-3 tap-effect transition-all duration-300"; span.classList.remove('hidden'); } else { btn.className = "inactive-tab flex items-center gap-2 px-3 py-3 tap-effect transition-all duration-300"; span.classList.add('hidden'); } }); }
 
